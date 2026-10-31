@@ -139,7 +139,7 @@ A campaign is not called “complete” until it has: reviewed lesson content; p
 5. **Cast a validated spell:** the solution is checked against the learning objective. If valid, it powers team abilities.
 6. **Watch short auto-combat:** units attack and buffs/defenses trigger; enemies react within a bounded combat window.
 7. **Continue to another phase** until the mission is fulfilled or a retry is needed.
-8. **Earn progression rewards:** campaign mastery/XP, Byte Gems, collectibles, and story advancement.
+8. **Earn progression rewards:** campaign mastery/XP, Core Shards, collectibles, and story advancement.
 9. **Summon and build teams** in the hub, then repeat.
 
 ### 6.1 Example: SQL targeting battle
@@ -192,8 +192,8 @@ Each unit has: `id`, name, world of origin, rarity, class/role, health, basic at
 
 ### 7.2 Summoning and economy
 
-**Currency:** Byte Gems, awarded for clearing new stages and meaningful achievements.  
-**Alpha summon cost:** 100 gems per single roll.  
+**Currency:** Core Shards, awarded for clearing new stages and meaningful achievements.
+**Alpha summon cost:** 100 Core Shards per single roll.
 **Alpha rarity odds:** Common 55%, Rare 30%, Epic 12%, Legendary 3%.  
 **Alpha guarantee/pity:** Not implemented. Document this clearly if adding it.  
 **Duplicates:** Tracked in the alpha; planned shard/upgrade systems are not implemented.
@@ -226,7 +226,7 @@ Mastery should reflect evidence, not just repeated button presses. Replays provi
 
 ### Rewards
 
-First clears grant experience and Byte Gems; boss clears additionally grant a significant story reward. Add cosmetic badges and journal entries for mastery; keep the reward flow predictable. The alpha currently grants **35 gems / 55 XP** on a new non-boss clear and **60 gems / 120 XP** on a new boss clear.
+First clears grant experience and Core Shards; boss clears additionally grant a significant story reward. Add cosmetic badges and journal entries for mastery; keep the reward flow predictable. The alpha currently grants **35 Core Shards / 55 XP** on a new non-boss clear and **60 Core Shards / 120 XP** on a new boss clear.
 
 ### Testing integrity
 
@@ -270,7 +270,7 @@ Battlefield on the left, editor/console on the right, with adaptive layout for t
 3. Offer an accessible starter party sufficient to clear every first chapter.
 4. Introduce the code editor with a tiny tutorial: Run Code, read errors, Cast Spell.
 5. Complete an early stage and show a brief auto-battle payoff.
-6. Award first-clear gems, offer an optional first summon, then return to that campaign map.
+6. Award first-clear Core Shards, offer an optional first summon, then return to that campaign map.
 7. Reveal the codex and saved progress, without mandatory onboarding detours.
 
 ## 11. Technical system requirements (target)
@@ -307,7 +307,7 @@ Do **not** optimize for gacha spending, artificial session length or compulsive 
 
 - Three independently selectable maps, four stages each (12 total).
 - Two-phase boss in each world's currently playable slice.
-- Four-unit parties, 12 collectible characters, 100-gem summon, simple odds, localStorage.
+- Four-unit parties, 12 collectible characters, 100-shard reconstruction, simple odds, localStorage.
 - Static responsive layout: desktop, phone portrait, phone landscape.
 - Simple SQL subset implementation; pattern-based Python/Java checks.
 
@@ -337,7 +337,7 @@ Add real Python and Java execution, expand each independent curriculum, incorpor
 - **NULL:** The corrupting antagonist/process.
 - **World / campaign:** A complete independent language route.
 - **Core:** Memory (SQL), Logic (Python), Execution (Java).
-- **Byte Gems:** Earnable summon currency.
+- **Core Shards:** Earnable summon currency.
 - **Codex:** Player journal, learning history and mastery tracker.
 - **Code Evolution:** Proposed character evolution tied to demonstrated coding skill.
 - **Code & Combat:** Working name for alternating code phase and auto-battle phase.
@@ -345,3 +345,60 @@ Add real Python and Java execution, expand each independent curriculum, incorpor
 ---
 
 **Change control:** Any material change to campaign independence, educational fairness, lore endings, code validation behavior or economy must update this GDD, the roadmap and relevant tests together.
+
+
+## Currency and reconstruction update ? 2026-10-31
+
+Core Shards replace the former Byte Gem name. They are intact fragments recovered when code clears NULL's corruption. A first normal-stage clear awards 35 shards, a boss awards 60, and new players receive 200. Replays never duplicate these rewards. Reconstructing one companion costs 100 shards, with the same published rarity odds. Existing currency balances migrate one-for-one; campaign progress, drafts, companions and party are preserved.
+
+Reconstruction has its own navigation screen with a skippable signal assembly animation and explicit new/duplicate results. Duplicate copies remain collection counts, not upgrades or extra party slots. A roll is committed before its animation starts. Leaving the tab or skipping cannot reroll, lose a result, or charge twice. The Party screen exposes four explicit slots; selecting a slot and an owned reserve replaces exactly that slot. Essential starter companions and campaign independence are unchanged. This update supersedes older gem terminology and the combined summon/party interface above.
+
+
+Five-pull update: Summon now offers five independent random rolls with the same per-pull odds and no rarity guarantee. Normal price is 500 Core Shards, checked before any roll is charged. Unlimited testing currency also covers five-pulls. Every duplicate copy is saved before the shared skippable reveal.
+
+
+## Ascension and failed-cast retaliation ? 2026-10-31
+
+User-approved design revision: failed Cast Spell validation now triggers an enemy attack. This supersedes the older rule that invalid casts never cause retaliation. Run Code remains safe and untimed; retries are free. Current limited validators may reject unsupported valid programs, and that limitation remains visible. No rare unit or ascension is required to win.
+
+Ascension costs are 1, then 3, then 5 **additional** duplicates, capped at three stars (9 duplicates total). Each star adds 20% of base HP, ATK and DEF. Base tank stats: 180 HP / 16 ATK / 12 DEF; healer/support: 100 / 14 / 5; other roles: 110 / 24 / 4. `owned` stores lifetime copies, and spent duplicates are derived from saved stars. Schema 3 migrates versions 1/2 with zero stars and rejects impossible ascensions.
+
+Enemy attack is 36 on normal stages, 44 on bosses. Stages 1/2 use single-target attacks; stage 3 and bosses use AoE. Single attacks choose the first living tank, otherwise the first survivor. Damage is max(1, attack - defense), clamped to remaining HP. AoE resolves once per living member. Health lasts through both boss seals; each stage entry restores health. If everyone falls, Retry restores party HP while retaining the current seal, draft and all earned progress. Distinct healer powers and richer encounter balance remain future work.
+
+
+## Multi-example battle balance update ? 2026-10-31
+
+Current user-approved balance supersedes the older one-cast normal stages, two-seal bosses and 100-code-power formula: every normal stage has 3 distinct practice examples and 180 monster HP; every boss has 4 mixed examples and 240 HP. This applies independently to SQL, Python and Java. The first SQL slime requires SELECT * from enemies, supplies and signals. There are 39 authored examples across the current 12-stage slice, not 39 additional stages or a complete chapter curriculum.
+
+Each solved example resolves 20 baseline basic damage, 40 attack-spell damage and 40 utility points. Utility heals living injured allies before splitting leftover points into shields, which absorb retaliation after defense. This is a 20/40/40 combat-value budget; utility is not extra damage. Ascension scales basic damage up to 25; 2 maximum-power turns cannot defeat 180 HP, and 3 cannot defeat 240 HP. Stage reward and progression require all example objectives. Enemies retaliate only on invalid Cast Spell attempts, with normal ATK 32 and boss ATK 38; Run Code is safe. The starter party can clear everything without rare characters or ascension.
+
+Each authored example includes an objective, visible input/fixture, expected observable result, supported alternatives, edge cases, tiered hints, combat effect and practice-only mastery signal. Normal-stage prerequisites are earlier stages in the same campaign; examples within a stage build in order. SQL retains the same deliberately limited SELECT-only query shapes, parameterized for visible table fixtures; Python/Java remain non-executing pattern demos. Do not call these robust runtimes or mastery assessments. Draft keys now allow example indices 0?3; old saves remain readable. Health retry preserves the current example and enemy HP, with no duplicate rewards. Closing or re-entering a stage restarts its examples.
+
+
+## Individual character skills ? 2026-10-31
+
+All 12 companions now have individual base HP/ATK/DEF and distinct implemented skills. Roster definitions live in scripts/characters.js, successful-cast activation in scripts/character-skills.js, and damage/utility/guard resolution in scripts/combat.js. This supersedes older descriptive-only character-role wording. See docs/CHARACTER_GUIDE.md for the complete stat and skill table.
+
+Sol's legendary Dawn Protocol adds up to 16 healing/shielding points per correct cast and revives the first fallen ally to 35% max HP once per stage attempt. Sol must be alive. Revived allies can fight immediately but do not activate another skill until the next correct cast. Retry and stage entry reset per-attempt skill counters, marks, guard charges and revive allowance; changing examples does not reset them. No persisted save migration is needed because these are encounter-local fields.
+
+The baseline 20 basic / 40 attack spell / 40 utility budget remains. Team caps are 25 basic damage, 50 total attack-spell damage, and +24 utility points per correct cast. Revive HP is an explicitly separate legendary effect. Basic damage scales with living-party ATK relative to the original starter team's 78 ATK, with a floor of 20 to preserve learning-first balance. Utility prioritizes bonus healing, character-directed shields, base healing, then evenly split remaining shields. Byte and Pip route existing utility rather than minting extra points. Guard charges mitigate one matching enemy retaliation after defense and before shields, never stack, and require the source to remain alive. Combined guard effects are allowed; incoming damage has a minimum of one before shielding.
+
+The strongest possible turn deals 75 damage, so 180/240 HP still requires all 3/4 distinct examples. Starter characters remain sufficient. Rarity improves stats, utility and tactical options without becoming a curriculum prerequisite. No skill grants stage credit for wrong code, and Run Code remains safe.
+
+
+## Gradual starter party update ? 2026-10-31
+
+The user clarified that the milestones are **Stages 2, 3 and 4 of the current chapter**, not future chapters. New saves begin with only Byte Knight. Patch joins when Stage 2 unlocks (clear Stage 1), Echo when Stage 3 unlocks (clear Stage 2), and Pip when Stage 4 unlocks (clear Stage 3). All four are Common. The complete free party is ready for the boss; Query Mage is Rare and is no longer a fresh-save starter.
+
+Any independently chosen campaign can trigger these shared recruits. Grants are one-time globally, require contiguous stage clears within a single campaign, never charge currency or require summons, and never generate duplicate copies for an already-owned recruit. Auto-fill unoccupied party slots on recruitment; never replace an existing chosen full team. New-game empty slots are reserved for story arrivals, while summoned reserves can replace occupied slots.
+
+Schema 4 keeps the stable storage key, supports party lengths 1?4 and persists claimed story recruits. Versions 1?3 migrate without removing existing collection, ascensions, shards, drafts or party; eligible recruits are reconciled on load. Byte alone remains sufficient for the introductory encounters under the learning-first damage floor and free retry rules. This supersedes earlier references to four freely granted starting companions. Actual later chapters remain planned.
+
+
+## Learning foundation update ? 2026-10-31
+
+Current implementation supersedes older four-stage/pattern-check descriptions: each route now contains 16 stages across four compact chapters (48 stages / 156 combat examples total). New authored problems use explicit contracts, constraints, sample and transfer cases, tiered hints and progressively longer solutions. Topics cover branching, loops, functions, collections/strings and introductory algorithms; SQL adds aggregates, joins, CTEs and window queries. See docs/LEARNING_PLAN.md for the implemented topic map, reviewed resources and missing comprehensive coverage.
+
+SQL uses real read-only SQLite in disposable browser workers, and Python uses real CPython via a constrained Pyodide worker sandbox. Java uses a bounded AST teaching interpreter with behavioral grading, not compilation/JVM execution. The old text-pattern checks are no longer the live game grader. Unsupported forms and runtime-loading failures do not trigger enemy damage. Run Code checks visible samples; Cast Spell adds transfer tests. All code runs locally in the browser, with documented limits; do not claim production sandbox security or full language support.
+
+Old saved stage clears 0?3 are retained; stage/draft validation now supports 0?15, chapter maps unlock independently, and boss rewards occur every fourth stage. Shared starter recruitment remains at Stage 2/3/4. The nine-chapter full-release curriculum and independent endings remain future work; four compact foundation chapters do not constitute comprehensive language completion. Questions are original, informed by the requested Bro Code Java reference and Helsinki Python MOOC, not copied course exercises.

@@ -2,11 +2,14 @@
 // Run: node scripts/browser-tests.mjs (Windows, Microsoft Edge required).
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { readFile, mkdir } from "node:fs/promises";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { resolve, extname } from "node:path";
 import { campaigns } from "./campaigns.js";
 const root = resolve(import.meta.dirname, "..");
+const layoutOnly =
+  process.argv.includes("--layout-only") ||
+  process.argv.includes("--problem-layout-only");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const server = createServer(async (req, res) => {
   const path = resolve(
@@ -29,6 +32,9 @@ const server = createServer(async (req, res) => {
       ".css": "text/css",
       ".svg": "image/svg+xml",
       ".webmanifest": "application/manifest+json",
+      ".wasm": "application/wasm",
+      ".json": "application/json",
+      ".zip": "application/zip",
     }[extname(path)];
     res.writeHead(200, { "Content-Type": type || "text/plain" }).end(body);
   } catch {
@@ -36,7 +42,7 @@ const server = createServer(async (req, res) => {
   }
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-const url = `http://127.0.0.1:${server.address().port}`;
+const url = `http://127.0.0.1:${server.address().port}/?shards=earned`;
 const profile = resolve(root, ".tools", "browser-check-" + Date.now());
 await mkdir(profile, { recursive: true });
 const edge = spawn(
@@ -52,7 +58,7 @@ const edge = spawn(
   ],
   { windowsHide: true, stdio: "ignore" },
 );
-let ws;
+let ws, send;
 try {
   let port;
   for (let attempt = 0; attempt < 100; attempt++) {
@@ -90,13 +96,13 @@ try {
         : task.resolve(data.result);
     }
   });
-  const send = (method, params = {}) =>
+  send = (method, params = {}) =>
     new Promise((resolve, reject) => {
       const id = ++sequence;
       pending.set(id, { resolve, reject });
       setTimeout(() => {
         if (pending.delete(id)) reject(Error("CDP timeout: " + method));
-      }, 8000).unref();
+      }, 60000).unref();
       ws.send(JSON.stringify({ id, method, params }));
     });
   const evaluate = async (expression) => {
@@ -111,9 +117,20 @@ try {
           " " +
           JSON.stringify(result.exceptionDetails.exception),
       );
+    if (expression.includes(".click()")) {
+      for (let attempt = 0; attempt < 2000; attempt++) {
+        const activity = await send("Runtime.evaluate", {
+          expression: 'document.body?.getAttribute("aria-busy")',
+          returnByValue: true,
+        });
+        if (activity.result.value !== "true") break;
+        await pause(25);
+      }
+    }
     return result.result.value;
   };
   await send("Page.enable");
+  await send("Page.bringToFront");
   await send("Emulation.setDeviceMetricsOverride", {
     width: 1280,
     height: 900,
@@ -145,6 +162,10 @@ try {
     [1280, 900],
     [1280, 720],
     [1440, 900],
+    [1897, 783],
+    [1920, 1080],
+    [1920, 800],
+    [1536, 640],
   ]) {
     await send("Emulation.setDeviceMetricsOverride", {
       width: size[0],
@@ -159,6 +180,32 @@ try {
       assert.ok(bounds.scrollWidth <= bounds.width);
       assert.ok(bounds.nav.x >= bounds.content.right);
     });
+    const cards =
+      await evaluate(`Array.from(document.querySelectorAll('.world-card'), card => {
+      const description=card.querySelector('p');
+      const text=document.createRange();text.selectNodeContents(description);
+      return {text:text.getBoundingClientRect().toJSON(),button:card.querySelector('button').getBoundingClientRect().toJSON(),card:card.getBoundingClientRect().toJSON(),progress:card.querySelector('small').getBoundingClientRect().toJSON()};
+    })`);
+    check("campaign text and buttons do not overlap " + size.join("x"), () => {
+      for (const card of cards) {
+        assert.ok(
+          card.text.bottom + 8 <= card.button.top,
+          JSON.stringify(card),
+        );
+        assert.ok(
+          card.progress.bottom <= card.card.bottom,
+          JSON.stringify(card),
+        );
+      }
+    });
+    if (size[0] === 1897) {
+      await pause(300);
+      const shot = await send("Page.captureScreenshot", { format: "png" });
+      await writeFile(
+        resolve(root, ".tools", "campaign-cards.png"),
+        Buffer.from(shot.data, "base64"),
+      );
+    }
     await click(".world-card button");
     const battleBounds = await layout();
     const editorBounds = await evaluate(
@@ -174,7 +221,15 @@ try {
         JSON.stringify(editorBounds),
       );
     });
-    for (const page of ["party", "journal"]) {
+    if (size[1] === 720) {
+      await pause(300);
+      const image = await send("Page.captureScreenshot", { format: "png" });
+      await writeFile(
+        resolve(root, ".tools", "desktop-battle.png"),
+        Buffer.from(image.data, "base64"),
+      );
+    }
+    for (const page of ["party", "reconstruction", "journal"]) {
       await click(`[data-page="${page}"]`);
       const b = await layout();
       check(page + " fits desktop " + size.join("x"), () =>
@@ -182,123 +237,645 @@ try {
       );
     }
   }
-  // Cancelled transitions must not hijack another screen or newly selected stage.
-  await click('[data-page="worlds"]');
-  await click(".world-card button");
-  await evaluate(
-    `document.querySelector('#code').value='SELECT * FROM enemies;';document.querySelector('#cast').click()`,
-  );
-  await pause(900);
-  await click('[data-page="party"]');
-  await pause(1900);
-  const afterCancel = await evaluate("document.body.dataset.page");
-  check("leaving during clear cancels automatic navigation", () =>
-    assert.equal(afterCancel, "party"),
-  );
-  for (const [worldIndex, world] of campaigns.entries()) {
-    await evaluate("localStorage.clear();location.reload()");
+  if (process.argv.includes("--problem-layout-only")) {
+    await evaluate(
+      `localStorage.setItem('escape-exe-save-v1',JSON.stringify({version:4,shards:200,owned:{byte:1},party:['byte'],completed:{sql:[],python:[],java:Array.from({length:15},(_,i)=>i)},ascensions:{},storyRecruits:[]}));location.reload()`,
+    );
     await pause(700);
-    for (let attempt = 0; attempt < 100; attempt++) {
-      if (
-        await evaluate(
-          'document.querySelectorAll(".world-card button").length===3',
-        )
-      )
+    for (let i = 0; i < 100; i++) {
+      if (await evaluate('document.querySelectorAll(".world-card").length===3'))
         break;
-      await pause(100);
+      await pause(50);
     }
     await evaluate(
-      `document.querySelectorAll('.world-card button')[${worldIndex}].click()`,
+      'document.querySelectorAll(".world-card button")[2].click()',
     );
-    const firstTitle = await evaluate(
-      'document.querySelector("#stage-title").textContent',
-    );
-    check(world.id + " starts first from a fresh save", () =>
-      assert.equal(firstTitle, world.stages[0].title),
-    );
-    for (let index = 0; index < world.stages.length; index++) {
-      assert.equal(
-        await evaluate('document.querySelector("#stage-title").textContent'),
-        world.stages[index].title,
-      );
-      const before = Number(
-        await evaluate('document.querySelector("#gems").textContent'),
-      );
-      await evaluate(
-        `document.querySelector('#code').value='';document.querySelector('#cast').click()`,
-      );
-      const afterInvalid = Number(
-        await evaluate('document.querySelector("#gems").textContent'),
-      );
-      check(world.id + " invalid cast preserves rewards " + index, () =>
-        assert.equal(afterInvalid, before),
-      );
-      assert.equal(await evaluate('document.querySelector("#hp").value'), 100);
-      const solution = world.stages[index].solution;
-      await evaluate(
-        `document.querySelector('#code').value=${JSON.stringify(solution)};document.querySelector('#run').click()`,
-      );
-      assert.equal(await evaluate('document.querySelector("#hp").value'), 100);
-      const b = await layout();
-      check(world.id + " battle actions fit desktop " + index, () => {
-        assert.ok(b.cast.bottom <= b.height);
-        assert.ok(b.scrollHeight <= b.height + 1);
+    for (const [width, height] of [
+      [1280, 720],
+      [1536, 640],
+      [390, 844],
+    ]) {
+      await send("Emulation.setDeviceMetricsOverride", {
+        width,
+        height,
+        deviceScaleFactor: 1,
+        mobile: width < 1024,
       });
-      await click("#cast");
-      if (index === 3) {
-        await pause(900);
-        assert.equal(await evaluate('document.querySelector("#hp").value'), 50);
-        assert.equal(
-          await evaluate('document.querySelector("#stage-title").textContent'),
-          world.stages[3].title,
+      await evaluate('document.querySelector("#worked-lesson").open=true');
+      const bounds = await layout();
+      const example = await evaluate(
+        '({visible:!document.querySelector("#worked-lesson").hidden,code:document.querySelector("#worked-example").textContent})',
+      );
+      check(
+        `long problem and worked example stay usable ${width}x${height}`,
+        () => {
+          assert.ok(example.visible);
+          assert.ok(example.code.length > 20);
+          assert.ok(bounds.scrollWidth <= width);
+          if (width >= 1024) assert.ok(bounds.cast.bottom <= height);
+        },
+      );
+      if (width >= 1024) {
+        await click("#focus-code");
+        const expanded = await evaluate(
+          '({editor:document.querySelector("#code").getBoundingClientRect().toJSON(),height:innerHeight})',
         );
-        const second = world.stages[world.id === "sql" ? 2 : 1].solution;
+        check(
+          `full editor provides room for multi-line solutions ${width}`,
+          () => assert.ok(expanded.editor.height > 200),
+        );
         await evaluate(
-          `document.querySelector('#code').value=${JSON.stringify(second)};document.querySelector('#cast').click()`,
+          'document.querySelector("#code").value="";document.querySelector("#cast").click()',
+        );
+        const returned = await evaluate(
+          'document.body.classList.contains("code-focused")',
+        );
+        check(
+          "casting returns from full editor to visible combat " + width,
+          () => assert.equal(returned, false),
         );
       }
-      await pause(2750);
-      if (index < 3)
-        assert.equal(
-          await evaluate('document.querySelector("#stage-title").textContent'),
-          world.stages[index + 1].title,
+      if (width === 1280) {
+        await pause(300);
+        const shot = await send("Page.captureScreenshot", { format: "png" });
+        await writeFile(
+          resolve(root, ".tools", "learning-problem.png"),
+          Buffer.from(shot.data, "base64"),
         );
-      else assert.equal(await evaluate("document.body.dataset.page"), "worlds");
-      const afterReward = Number(
-        await evaluate('document.querySelector("#gems").textContent'),
-      );
-      check(world.id + " clear awards once and auto advances " + index, () =>
-        assert.equal(afterReward, before + (index === 3 ? 60 : 35)),
-      );
+      }
     }
   }
-  for (const [width, height] of [
-    [390, 844],
-    [844, 390],
-  ]) {
-    await send("Emulation.setDeviceMetricsOverride", {
-      width,
-      height,
-      deviceScaleFactor: 1,
-      mobile: true,
-    });
-    await click('[data-page="worlds"]');
-    await click(".world-card button");
-    const b = await layout();
-    check("mobile no horizontal overflow " + width + "x" + height, () =>
-      assert.ok(b.scrollWidth <= width),
+  if (
+    process.argv.includes("--learning-only") ||
+    process.argv.includes("--runtime-smoke")
+  ) {
+    if (!process.argv.includes("--runtime-smoke"))
+      for (const world of campaigns)
+        for (const stage of world.stages)
+          for (const [phase, exercise] of stage.exercises.entries()) {
+            const grade = await evaluate(
+              `(async()=>{const {gradeBehavior}=await import('./scripts/behavior-grading.js');const {campaigns}=await import('./scripts/campaigns.js');const exercise=campaigns.find(world=>world.id===${JSON.stringify(world.id)}).stages[${world.stages.indexOf(stage)}].exercises[${phase}];return await gradeBehavior(${JSON.stringify(world.id)},exercise,exercise.solution,true);})()`,
+            );
+            check(
+              `${world.id} ${stage.title} example ${phase + 1} passes behavior tests`,
+              () => assert.equal(grade.ok, true, grade.message),
+            );
+          }
+    const alternatePython = "def solve(a, b, c):\n    return max(a, b, c)";
+    const hardcodedPython = "def solve(a, b, c):\n    return 9";
+    const infinitePython = "def solve(a, b, c):\n    while True:\n        pass";
+    const behavior = await evaluate(
+      `(async()=>{const {gradeBehavior}=await import('./scripts/behavior-grading.js');const {campaigns}=await import('./scripts/campaigns.js');const exercise=campaigns[1].stages[4].exercises[0];const valid=await gradeBehavior('python',exercise,${JSON.stringify(alternatePython)},true);const visible=await gradeBehavior('python',exercise,${JSON.stringify(hardcodedPython)},false);const hidden=await gradeBehavior('python',exercise,${JSON.stringify(hardcodedPython)},true);const infinite=await gradeBehavior('python',exercise,${JSON.stringify(infinitePython)},true);return {valid,visible,hidden,infinite};})()`,
     );
+    check(
+      "Python accepts alternate algorithms and hidden cases reject hard-coding",
+      () => {
+        assert.equal(behavior.valid.ok, true, behavior.valid.message);
+        assert.equal(behavior.visible.ok, true);
+        assert.equal(behavior.hidden.ok, false);
+        assert.equal(behavior.infinite.ok, false);
+      },
+    );
+    console.log(`${checks} layout and learning-runtime checks passed.`);
+  } else {
+    if (!layoutOnly) {
+      await evaluate(
+        `localStorage.setItem('escape-exe-save-v1',JSON.stringify({version:3,shards:200,owned:{byte:1,sol:1,query:1,echo:1},party:['byte','sol','query','echo'],completed:{sql:[],python:[],java:[]},ascensions:{}}));location.reload()`,
+      );
+      await pause(700);
+      for (let i = 0; i < 100; i++) {
+        if (
+          await evaluate('document.querySelectorAll(".world-card").length===3')
+        )
+          break;
+        await pause(50);
+      }
+      await click('[data-page="party"]');
+      const solCard = await evaluate(
+        'document.querySelector("[data-character=sol]").textContent',
+      );
+      check("legendary skill and individual stats are visible in party", () => {
+        assert.match(solCard, /Dawn Protocol/);
+        assert.match(solCard, /HP 190/);
+        assert.match(solCard, /35%/);
+      });
+      await click('[data-page="worlds"]');
+      await click(".world-card button");
+      await send("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+      });
+      await evaluate(
+        "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
+      );
+      await evaluate(
+        `(async()=>{document.querySelector('#code').value='wrong';for(let i=0;i<9;i++){document.querySelector('#cast').click();while(document.body.getAttribute('aria-busy')==='true')await new Promise(resolve=>setTimeout(resolve,15));await new Promise(resolve=>setTimeout(resolve,80));}})()`,
+      );
+      assert.equal(
+        await evaluate(
+          'document.querySelector("[data-unit=byte] progress").value',
+        ),
+        0,
+      );
+      await evaluate(
+        `document.querySelector('#code').value=${JSON.stringify(campaigns[0].stages[0].exercises[0].solution)};document.querySelector('#run').click()`,
+      );
+      const beforeCast = await evaluate(
+        'document.querySelector("[data-unit=byte] progress").value',
+      );
+      check("safe Run Code cannot activate legendary revival", () =>
+        assert.equal(beforeCast, 0),
+      );
+      await click("#cast");
+      await pause(150);
+      const revival = await evaluate(
+        '({hp:document.querySelector("[data-unit=byte] progress").value,log:document.querySelector("#combat-log").textContent,progress:document.querySelector("#exercise-progress").textContent})',
+      );
+      check(
+        "Lesson casts do not activate Sol automatically",
+        () => {
+          assert.equal(revival.hp, 0);
+          assert.equal(revival.log, "Your party strikes.");
+          assert.match(revival.progress, /Example 2/);
+        },
+      );
+      await evaluate(
+        `(async()=>{document.querySelector('#code').value='wrong';for(let i=0;i<15 && document.querySelector('[data-unit=byte] progress').value>0;i++){document.querySelector('#cast').click();while(document.body.getAttribute('aria-busy')==='true')await new Promise(resolve=>setTimeout(resolve,15));await new Promise(resolve=>setTimeout(resolve,80));}})()`,
+      );
+      await evaluate(
+        `document.querySelector('#code').value=${JSON.stringify(campaigns[0].stages[0].exercises[1].solution)};document.querySelector('#cast').click()`,
+      );
+      await pause(150);
+      const secondRevival = await evaluate(
+        'document.querySelector("[data-unit=byte] progress").value',
+      );
+      check("Sol cannot revive a second time in the same attempt", () =>
+        assert.equal(secondRevival, 0),
+      );
+      await click('[data-page="worlds"]');
+    }
+    if (!layoutOnly) {
+      await evaluate(
+        `localStorage.setItem('escape-exe-save-v1',JSON.stringify({version:3,shards:200,owned:{byte:10,patch:1,query:1,echo:1},party:['byte','patch','query','echo'],completed:{sql:[0,1],python:[],java:[]},ascensions:{}}));location.reload()`,
+      );
+      await pause(700);
+      for (let i = 0; i < 100; i++) {
+        if (
+          await evaluate('document.querySelectorAll(".world-card").length===3')
+        )
+          break;
+        await pause(50);
+      }
+      await click('[data-page="party"]');
+      for (let i = 0; i < 3; i++) await click('[data-ascend="byte"]');
+      const ascended = await evaluate(
+        '({save:JSON.parse(localStorage.getItem("escape-exe-save-v1")),text:document.querySelector("[data-character=byte]").textContent,disabled:document.querySelector("[data-ascend=byte]").disabled})',
+      );
+      check(
+        "ascend buttons spend escalating duplicates and cap at three",
+        () => {
+          assert.equal(ascended.save.ascensions.byte, 3);
+          assert.equal(ascended.disabled, true);
+          assert.match(ascended.text, /Spare duplicates: 0/);
+        },
+      );
+      await click('[data-page="worlds"]');
+      await click(".world-card button");
+      await click("#stage-map button");
+      const health = () =>
+        evaluate(
+          'Array.from(document.querySelectorAll("#battle-party progress:not(.skill-charge)"),bar=>bar.value)',
+        );
+      const initialHealth = await health();
+      await evaluate(
+        'document.querySelector("#code").value="wrong";document.querySelector("#code").dispatchEvent(new Event("input"));document.querySelector("#run").click()',
+      );
+      const practiceHealth = await health();
+      check("Run Code errors never trigger retaliation", () =>
+        assert.deepEqual(practiceHealth, initialHealth),
+      );
+      await click("#cast");
+      await pause(550);
+      const tankHit = await health();
+      check("failed cast damages only the tank", () => {
+        assert.ok(tankHit[0] < initialHealth[0]);
+        assert.deepEqual(tankHit.slice(1), initialHealth.slice(1));
+      });
+      await evaluate(
+        'document.querySelectorAll("#stage-map button")[2].click()',
+      );
+      const beforeAoe = await health();
+      await evaluate(
+        'document.querySelector("#code").value="wrong";document.querySelector("#code").dispatchEvent(new Event("input"));document.querySelector("#cast").click()',
+      );
+      await pause(550);
+      const afterAoe = await health();
+      check("AoE failed cast damages all four party members", () =>
+        assert.ok(afterAoe.every((hp, index) => hp < beforeAoe[index])),
+      );
+      await send("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+      });
+      await evaluate(
+        "new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))",
+      );
+      await evaluate(
+        `(async()=>{for(let i=0;i<30 && document.querySelector('#retry-battle').hidden;i++){document.querySelector('#cast').click();while(document.body.getAttribute('aria-busy')==='true')await new Promise(resolve=>setTimeout(resolve,15));await new Promise(resolve=>setTimeout(resolve,80));}})()`,
+      );
+      const fallen = await evaluate(
+        '({retry:!document.querySelector("#retry-battle").hidden,cast:document.querySelector("#cast").disabled})',
+      );
+      check("party defeat exposes free retry and stops casts", () => {
+        assert.equal(fallen.retry, true);
+        assert.equal(fallen.cast, true);
+      });
+      await click("#retry-battle");
+      const retryHealth = await health();
+      const draft = await evaluate('document.querySelector("#code").value');
+      check("free retry restores HP and keeps draft", () => {
+        assert.deepEqual(retryHealth, beforeAoe);
+        assert.equal(draft, "wrong");
+      });
+      await click('[data-page="worlds"]');
+    }
+    if (!layoutOnly && !process.argv.includes("--combat-only")) {
+      // Seed a legacy save to verify migration and deterministic summon outcomes.
+      await evaluate(
+        `localStorage.setItem('escape-exe-save-v1', JSON.stringify({version:1,gems:300,owned:{byte:1,patch:1,query:1,echo:1},party:['byte','patch','query','echo'],completed:{sql:[],python:[],java:[]}}));location.reload()`,
+      );
+      await pause(700);
+      for (let i = 0; i < 100; i++) {
+        if (
+          await evaluate('document.querySelectorAll(".world-card").length===3')
+        )
+          break;
+        await pause(100);
+      }
+      const migratedBalance = await evaluate(
+        'document.querySelector("#shards").textContent',
+      );
+      check("legacy wallet migrates in browser", () =>
+        assert.equal(migratedBalance, "300"),
+      );
+      await send("Emulation.setEmulatedMedia", {
+        features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
+      });
+      await click('[data-page="reconstruction"]');
+      const charging = await evaluate(
+        `(() => {window.originalRandom=Math.random;Math.random=()=>0;document.querySelector('#summon').click();document.querySelector('#summon').click();return {shards:document.querySelector('#shards').textContent,busy:document.querySelector('#summon-chamber').getAttribute('aria-busy'),animated:document.querySelector('#summon-chamber').classList.contains('reconstructing'),reduced:matchMedia('(prefers-reduced-motion: reduce)').matches,paused:document.querySelector('#motion').getAttribute('aria-pressed')};})()`,
+      );
+      check("double click charges once and starts reconstruction", () => {
+        assert.equal(charging.shards, "200");
+        assert.equal(charging.busy, "true");
+        assert.equal(charging.animated, true);
+      });
+      await click("#skip-summon");
+      const duplicateMessage = await evaluate(
+        'document.querySelector("#summon-message").textContent',
+      );
+      check("duplicate reveal clearly reports saved copies", () =>
+        assert.match(duplicateMessage, /2 copies/),
+      );
+      await pause(450);
+      await evaluate(
+        'let draws=[0.9,0];Math.random=()=>draws.shift()??0;document.querySelector("#summon").click()',
+      );
+      await pause(1800);
+      const reveal = await evaluate(
+        '({name:document.querySelector("#summon-result h3").textContent,balance:document.querySelector("#shards").textContent,busy:document.querySelector("#summon-chamber").getAttribute("aria-busy")})',
+      );
+      check("animated new companion reveal spends 100 shards", () => {
+        assert.equal(reveal.name, "Nova");
+        assert.equal(reveal.balance, "100");
+        assert.equal(reveal.busy, "false");
+      });
+      const summonImage = await send("Page.captureScreenshot", {
+        format: "png",
+      });
+      await writeFile(
+        resolve(root, ".tools", "summon-reveal.png"),
+        Buffer.from(summonImage.data, "base64"),
+      );
+      await click("#summon-party");
+      await click('[data-slot="2"]');
+      await click('[data-character="nova"] button');
+      const partySave = await evaluate(
+        'JSON.parse(localStorage.getItem("escape-exe-save-v1"))',
+      );
+      check("party slot replacement is saved with four unique members", () => {
+        assert.deepEqual(partySave.party, ["byte", "patch", "nova", "echo"]);
+        assert.equal(partySave.owned.byte, 2);
+        assert.equal(partySave.shards, 100);
+      });
+      await evaluate("Math.random=window.originalRandom;location.reload()");
+      await pause(700);
+      for (let i = 0; i < 100; i++) {
+        if (
+          await evaluate('document.querySelectorAll(".world-card").length===3')
+        )
+          break;
+        await pause(100);
+      }
+      await click('[data-page="party"]');
+      const retained = await evaluate(
+        `document.querySelector('[data-slot="2"]').textContent`,
+      );
+      check("party survives browser reload", () =>
+        assert.match(retained, /Nova/),
+      );
+      await click('[data-page="reconstruction"]');
+      await evaluate(
+        'Math.random=()=>0;document.querySelector("#summon").click()',
+      );
+      await click('[data-page="party"]');
+      await click('[data-page="reconstruction"]');
+      const completed = await evaluate(
+        '({disabled:document.querySelector("#summon").disabled,busy:document.querySelector("#summon-chamber").getAttribute("aria-busy"),text:document.querySelector("#summon-message").textContent})',
+      );
+      check(
+        "leaving reveal keeps result and insufficient balance disables roll",
+        () => {
+          assert.equal(completed.disabled, true);
+          assert.equal(completed.busy, "false");
+          assert.match(completed.text, /copies/);
+        },
+      );
+      const text = await evaluate("document.body.textContent");
+      check("UI has no corrupted question-mark separators", () =>
+        assert.equal(text.includes("?"), false),
+      );
+      await evaluate("localStorage.clear();location.reload()");
+      await pause(700);
+      for (let i = 0; i < 100; i++) {
+        if (
+          await evaluate('document.querySelectorAll(".world-card").length===3')
+        )
+          break;
+        await pause(100);
+      }
+    }
+    if (
+      !layoutOnly &&
+      !process.argv.includes("--combat-only") &&
+      !process.argv.includes("--collection-only")
+    ) {
+      // Cancelled transitions must not hijack another screen or newly selected stage.
+      await click('[data-page="worlds"]');
+      await click(".world-card button");
+      for (const exercise of campaigns[0].stages[0].exercises) {
+        await evaluate(
+          `document.querySelector('#code').value=${JSON.stringify(exercise.solution)};document.querySelector('#cast').click()`,
+        );
+        await pause(900);
+      }
+      await click('[data-page="party"]');
+      await pause(1900);
+      const afterCancel = await evaluate("document.body.dataset.page");
+      check("leaving during clear cancels automatic navigation", () =>
+        assert.equal(afterCancel, "party"),
+      );
+      for (const [worldIndex, world] of campaigns.entries()) {
+        await evaluate("localStorage.clear();location.reload()");
+        await pause(700);
+        for (let attempt = 0; attempt < 100; attempt++) {
+          if (
+            await evaluate(
+              'document.querySelectorAll(".world-card button").length===3',
+            )
+          )
+            break;
+          await pause(100);
+        }
+        await evaluate(
+          `document.querySelectorAll('.world-card button')[${worldIndex}].click()`,
+        );
+        const opening = await evaluate(
+          '({party:JSON.parse(localStorage.getItem("escape-exe-save-v1")).party,owned:JSON.parse(localStorage.getItem("escape-exe-save-v1")).owned,visible:document.querySelectorAll("#battle-party .companion").length})',
+        );
+        check(`${world.id} begins with only Byte Knight`, () => {
+          assert.deepEqual(opening.party, ["byte"]);
+          assert.deepEqual(opening.owned, { byte: 1 });
+          assert.equal(opening.visible, 1);
+        });
+        const firstTitle = await evaluate(
+          'document.querySelector("#stage-title").textContent',
+        );
+        check(world.id + " starts first from a fresh save", () =>
+          assert.equal(firstTitle, world.stages[0].title),
+        );
+        for (let index = 0; index < world.stages.length; index++) {
+          assert.equal(
+            await evaluate(
+              'document.querySelector("#stage-title").textContent',
+            ),
+            world.stages[index].title,
+          );
+          const before = Number(
+            await evaluate('document.querySelector("#shards").textContent'),
+          );
+          await evaluate(
+            `document.querySelector('#code').value='';document.querySelector('#cast').click()`,
+          );
+          await pause(550);
+          const afterInvalid = Number(
+            await evaluate('document.querySelector("#shards").textContent'),
+          );
+          check(world.id + " invalid cast preserves rewards " + index, () =>
+            assert.equal(afterInvalid, before),
+          );
+          assert.equal(
+            await evaluate('document.querySelector("#hp").value'),
+            world.stages[index].enemy.hp,
+          );
+          const exercises = world.stages[index].exercises;
+          const b = await layout();
+          check(world.id + " battle actions fit desktop " + index, () => {
+            assert.ok(b.cast.bottom <= b.height);
+            assert.ok(b.scrollHeight <= b.height + 1);
+          });
+          for (const [exerciseIndex, exercise] of exercises.entries()) {
+            const hpBefore = await evaluate(
+              'document.querySelector("#hp").value',
+            );
+            await evaluate(
+              `document.querySelector('#code').value=${JSON.stringify(exercise.solution)};document.querySelector('#run').click()`,
+            );
+            assert.equal(
+              await evaluate('document.querySelector("#hp").value'),
+              hpBefore,
+            );
+            await click("#cast");
+            await pause(exerciseIndex === exercises.length - 1 ? 1950 : 30);
+            if (exerciseIndex < exercises.length - 1) {
+              const status = await evaluate(
+                '({hp:document.querySelector("#hp").value,progress:document.querySelector("#exercise-progress").textContent,shards:document.querySelector("#shards").textContent})',
+              );
+              check(
+                `${world.id} stage ${index + 1} example ${exerciseIndex + 1} cannot finish fight early`,
+                () => {
+                  assert.ok(status.hp > 0);
+                  assert.ok(status.hp < hpBefore);
+                  assert.equal(Number(status.shards), before);
+                  assert.match(
+                    status.progress,
+                    new RegExp(
+                      `Example ${exerciseIndex + 2} / ${exercises.length}`,
+                    ),
+                  );
+                },
+              );
+            }
+          }
+          if (index < world.stages.length - 1)
+            assert.equal(
+              await evaluate(
+                'document.querySelector("#stage-title").textContent',
+              ),
+              world.stages[index + 1].title,
+            );
+          else
+            assert.equal(
+              await evaluate("document.body.dataset.page"),
+              "worlds",
+            );
+          const recruitedParty = await evaluate(
+            'JSON.parse(localStorage.getItem("escape-exe-save-v1")).party',
+          );
+          check(
+            `${world.id} stage ${index + 1} recruits the right guaranteed companion`,
+            () =>
+              assert.deepEqual(
+                recruitedParty,
+                ["byte", "patch", "echo", "pip"].slice(
+                  0,
+                  Math.min(index + 2, 4),
+                ),
+              ),
+          );
+          const afterReward = Number(
+            await evaluate('document.querySelector("#shards").textContent'),
+          );
+          check(
+            world.id + " clear awards once and auto advances " + index,
+            () =>
+              assert.equal(afterReward, before + (index % 4 === 3 ? 60 : 35)),
+          );
+        }
+      }
+      for (const [width, height] of [
+        [390, 844],
+        [844, 390],
+      ]) {
+        await send("Emulation.setDeviceMetricsOverride", {
+          width,
+          height,
+          deviceScaleFactor: 1,
+          mobile: true,
+        });
+        await click('[data-page="worlds"]');
+        await click(".world-card button");
+        const b = await layout();
+        check("mobile no horizontal overflow " + width + "x" + height, () =>
+          assert.ok(b.scrollWidth <= width),
+        );
+      }
+    }
+    for (const [width, height] of [
+      [390, 844],
+      [844, 390],
+    ]) {
+      await send("Emulation.setDeviceMetricsOverride", {
+        width,
+        height,
+        deviceScaleFactor: 1,
+        mobile: true,
+      });
+      for (const page of ["reconstruction", "party"]) {
+        await click(`[data-page="${page}"]`);
+        const bounds = await layout();
+        check(`${page} fits mobile width ${width}`, () =>
+          assert.ok(bounds.scrollWidth <= width),
+        );
+      }
+    }
+    await send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+    });
+    await evaluate(
+      "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
+    );
+    await click('[data-page="worlds"]');
+    await pause(150);
+    const animationState = await evaluate(
+      "({ reduced:matchMedia('(prefers-reduced-motion: reduce)').matches, animations:document.getAnimations().map(a=>({state:a.playState,target:a.effect.target.tagName,name:a.animationName,transition:a.transitionProperty}))})",
+    );
+    const animationCount = animationState.animations.length;
+    check("reduced motion skips transition animations", () =>
+      assert.equal(animationCount, 0),
+    );
+    if (!layoutOnly && !process.argv.includes("--combat-only")) {
+      await click('[data-page="reconstruction"]');
+      const instant = await evaluate(
+        `(() => { const before=Number(document.querySelector('#shards').textContent);document.querySelector('#summon').click();document.querySelector('#summon').click();return {before,after:Number(document.querySelector('#shards').textContent),busy:document.querySelector('#summon-chamber').getAttribute('aria-busy'),result:document.querySelector('#summon-result').textContent}; })()`,
+      );
+      check(
+        "reduced motion reveals immediately and guards rapid repeat clicks",
+        () => {
+          assert.equal(instant.after, instant.before - 100);
+          assert.equal(instant.busy, "false");
+          assert.ok(instant.result.length > 0);
+        },
+      );
+    }
+    if (!layoutOnly && !process.argv.includes("--combat-only")) {
+      await send("Page.navigate", { url: url.split("?")[0] });
+      await pause(700);
+      for (let i = 0; i < 100; i++) {
+        if (
+          await evaluate('document.querySelectorAll(".world-card").length===3')
+        )
+          break;
+        await pause(50);
+      }
+      await click('[data-page="reconstruction"]');
+      const beforeCopies = await evaluate(
+        'Object.values(JSON.parse(localStorage.getItem("escape-exe-save-v1")).owned).reduce((sum,n)=>sum+n,0)',
+      );
+      await click("#summon-five");
+      const batch = await evaluate(
+        '({cards:document.querySelectorAll("#summon-result .summon-card").length,wallet:document.querySelector("#shards").textContent,copies:Object.values(JSON.parse(localStorage.getItem("escape-exe-save-v1")).owned).reduce((sum,n)=>sum+n,0)})',
+      );
+      check(
+        "unlimited five-pull reveals and saves all five random results",
+        () => {
+          assert.equal(batch.cards, 5);
+          assert.equal(batch.wallet, "Unlimited");
+          assert.equal(batch.copies, beforeCopies + 5);
+        },
+      );
+      for (const [width, height] of [
+        [1280, 720],
+        [390, 844],
+      ]) {
+        await send("Emulation.setDeviceMetricsOverride", {
+          width,
+          height,
+          deviceScaleFactor: 1,
+          mobile: width < 1024,
+        });
+        const bounds = await layout();
+        check(`five-pull results fit width ${width}`, () =>
+          assert.ok(bounds.scrollWidth <= width),
+        );
+      }
+    }
+    console.log(`${checks} browser checks passed.`);
   }
-  await send("Emulation.setEmulatedMedia", {
-    features: [{ name: "prefers-reduced-motion", value: "reduce" }],
-  });
-  await click('[data-page="worlds"]');
-  const animationCount = await evaluate("document.getAnimations().length");
-  check("reduced motion skips transition animations", () =>
-    assert.equal(animationCount, 0),
-  );
-  console.log(`${checks} browser checks passed.`);
 } finally {
+  if (ws?.readyState === WebSocket.OPEN && send) {
+    try {
+      await Promise.race([send("Browser.close"), pause(1500)]);
+    } catch {}
+  }
   ws?.close();
   edge.kill();
   server.closeAllConnections();

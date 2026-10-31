@@ -7,7 +7,7 @@
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <meta name="theme-color" content="#101c24" />
-    <title>ESCAPE.EXE ? Code your escape</title>
+    <title>ESCAPE.EXE | Code your escape</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="assets/icon.svg" />
     <link rel="stylesheet" href="styles/game.css" />
@@ -17,7 +17,8 @@
       <a href="./" class="brand"><b>E</b> ESCAPE<span>.EXE</span></a
       ><small>THE SYSTEM / TERMINAL 001</small>
       <div class="wallet">
-        ? <span id="gems">200</span> <small>BYTES</small>
+        <span class="shard-icon" aria-hidden="true"></span>
+        <span id="shards">200</span> <small>CORE SHARDS</small>
       </div>
     </header>
     <main>
@@ -31,7 +32,7 @@
           </p>
         </div>
         <div class="terminal">
-          ? CONNECTION ESTABLISHED<br /><span
+          ONLINE / CONNECTION ESTABLISHED<br /><span
             >player_001 has entered The System.</span
           ><br />&gt; awaiting your next move_
         </div>
@@ -39,8 +40,9 @@
       <nav aria-label="Game screens">
         <button data-page="worlds" aria-current="page">01 / Campaigns</button
         ><button data-page="party">02 / Your party</button
-        ><button data-page="journal">03 / Codex</button
-        ><small>LOCAL SAVE ?</small>
+        ><button data-page="reconstruction">03 / Summon</button
+        ><button data-page="journal">04 / Codex</button
+        ><small>LOCAL SAVE / ON</small>
       </nav>
       <section id="worlds">
         <div class="heading">
@@ -52,24 +54,77 @@
         </div>
         <div id="world-list"></div>
         <p class="footnote">
-          ? No timers. No paid advantages. Just you and your code.
+          No timers. No paid advantages. Just you and your code.
         </p>
       </section>
       <section id="party" hidden>
         <div class="heading">
-          <h2>Your digital companions</h2>
-          <button id="summon">Summon ? 100 ?</button>
+          <div>
+            <p class="eyebrow">YOUR ACTIVE SIGNALS</p>
+            <h2>Your digital companions</h2>
+          </div>
         </div>
         <p>
-          Choose a party member, then an owned reserve to replace them. Four
-          starter companions are enough for every stage.
+          Select an occupied slot, then choose an owned reserve. Story recruits
+          fill the empty slots. Changes save immediately.
         </p>
         <p class="muted">
-          Free earned bytes only. Common 55% ? Rare 30% ? Epic 12% ? Legendary
-          3%. Duplicates tracked. No pity system.
+          Skills trigger on correct casts. Team caps: 25 basic damage, 50 spell
+          damage, and 24 bonus utility. Legendary revives are separate.
         </p>
-        <div id="roster"></div>
-        <p id="party-message" role="status"></p>
+        <p class="muted">
+          Story party: Byte Knight starts alone / Stage 2: Patch / Stage 3: Echo
+          / Stage 4: Pip. Choose any language first.
+        </p>
+        <div id="party-slots" aria-label="Active party slots"></div>
+        <p id="party-message" role="status">
+          Choose a slot to change its companion.
+        </p>
+        <div id="roster" aria-label="Companion collection"></div>
+      </section>
+      <section id="reconstruction" hidden>
+        <div class="heading">
+          <div>
+            <p class="eyebrow">SIGNAL RECONSTRUCTION</p>
+            <h2>Recover a lost companion</h2>
+          </div>
+        </div>
+        <p class="summon-lore">
+          NULL scattered your allies into the static. Recover Core Shards from
+          corrupted systems, then combine them to reconstruct a companion's
+          signal.
+        </p>
+        <p class="testing-option">
+          Testing build: unlimited Core Shards for random summon rolls.
+        </p>
+        <div id="summon-chamber" class="summon-chamber" aria-busy="false">
+          <div id="summon-sigil" class="summon-sigil" aria-hidden="true">
+            <span class="shard-icon"></span>
+          </div>
+          <div id="summon-result"></div>
+          <p id="summon-message" role="status" aria-live="polite">
+            A lost signal is waiting to be restored.
+          </p>
+          <div class="summon-actions">
+            <button id="summon">Roll summon / Unlimited shards</button>
+            <button id="summon-five">5-pull / Unlimited shards</button>
+          </div>
+          <button id="skip-summon" class="secondary" hidden>
+            Skip animation
+          </button>
+          <button id="summon-party" class="secondary" hidden>
+            Manage party
+          </button>
+        </div>
+        <p class="summon-odds muted">
+          Common 55% / Rare 30% / Epic 12% / Legendary 3%. Duplicates are saved
+          as extra copies for ascension, not extra party slots. No pity system.
+        </p>
+        <p class="muted summon-earnings">
+          Ascension costs: 1, 3, then 5 spare duplicates. First clear: 35 Core
+          Shards. Boss: 60. Replays give no extra shards. New players start with
+          200. No purchases.
+        </p>
       </section>
       <section id="journal" hidden>
         <div class="heading"><h2>The Codex</h2></div>
@@ -79,7 +134,7 @@
         </p>
       </section>
       <section id="adventure" hidden>
-        <button id="back" class="text-button">? Campaigns</button>
+        <button id="back" class="text-button">Back to campaigns</button>
         <div class="heading">
           <div>
             <p id="world-label" class="eyebrow"></p>
@@ -87,6 +142,7 @@
           </div>
           <span id="stage-count"></span>
         </div>
+        <div id="chapter-map" aria-label="Chapter selection"></div>
         <div id="stage-map" aria-label="Stage selection"></div>
         <div class="play-layout">
           <section class="battle-panel">
@@ -110,17 +166,39 @@
               ></progress
               ><span id="hp-text">100 / 100</span>
             </div>
+            <p id="enemy-attack" class="enemy-attack"></p>
             <div id="battle-party"></div>
             <p id="combat-log" role="status">Correct code powers your party.</p>
+            <button id="retry-battle" class="secondary" hidden>
+              Retry battle / Free
+            </button>
           </section>
           <section class="coding-panel">
             <div class="panel-label">
-              <span id="language"></span><span>LEARN ? RUN ? CAST</span>
+              <span id="language"></span
+              ><button id="focus-code" class="text-button" aria-pressed="false">
+                Full editor
+              </button>
             </div>
             <div class="editor-content">
-              <h3 id="objective"></h3>
-              <p id="lesson"></p>
-              <pre id="example"></pre>
+              <div
+                class="problem-brief"
+                tabindex="0"
+                aria-label="Problem statement and examples"
+              >
+                <h3 id="objective"></h3>
+                <p id="exercise-progress" class="exercise-progress"></p>
+                <p id="lesson"></p>
+                <pre id="example"></pre>
+                <details id="worked-lesson" class="problem-spec" hidden>
+                  <summary>Learn the syntax / worked example</summary>
+                  <pre id="worked-example"></pre>
+                </details>
+                <details class="problem-spec">
+                  <summary>Constraints and contract</summary>
+                  <p id="problem-details"></p>
+                </details>
+              </div>
               <label for="code"
                 >YOUR CODE <span>Draft saved as you type</span></label
               ><textarea
@@ -134,8 +212,8 @@
               <p id="runtime-note" class="muted"></p>
               <div class="actions">
                 <button id="hint" class="secondary">Hint</button
-                ><button id="run" class="secondary">? Run code</button
-                ><button id="cast">? Cast spell</button>
+                ><button id="run" class="secondary">Run code</button
+                ><button id="cast">Cast spell</button>
               </div>
               <pre id="output" role="status" aria-live="polite"></pre>
             </div>
@@ -149,6 +227,17 @@
         Pause animation
       </button>
     </footer>
+    <dialog id="skill-dialog" aria-labelledby="skill-title" aria-describedby="skill-objective">
+      <div class="heading"><h2 id="skill-title"></h2><button id="close-skill" class="secondary" aria-label="Close skill prompt">Close</button></div>
+      <p id="skill-objective"></p>
+      <pre id="skill-example"></pre>
+      <p id="skill-cost" class="muted"></p>
+      <label for="skill-code">YOUR SKILL CODE</label>
+      <textarea id="skill-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+      <p id="skill-runtime" class="muted"></p>
+      <div class="actions"><button id="skill-hint" class="secondary">Hint</button><button id="skill-run" class="secondary">Run code</button><button id="skill-use">Use skill</button></div>
+      <pre id="skill-feedback" role="status" aria-live="polite">Solve the prompt to activate this skill.</pre>
+    </dialog>
     <script type="module" src="scripts/game.js"></script>
   </body>
 </html>

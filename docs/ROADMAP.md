@@ -13,7 +13,7 @@ Deliver three independently completable, high-quality coding campaigns with reli
 - [x] Mobile portrait/landscape-responsive battle layouts.
 - [x] Basic Run Code / Cast Spell flow.
 - [x] Small read-only SQL subset evaluation, limited Python/Java pattern checks.
-- [x] Four-unit teams, 12 characters, summon odds and earnable Byte Gems.
+- [x] Four-unit teams, 12 characters, summon odds and earnable Core Shards.
 - [x] Save basic progress, gems, collection and journal locally in the browser.
 - [ ] Real SQL engine, Python sandbox, Java sandbox, full story and full chapter curricula — **not in alpha**.
 
@@ -125,3 +125,58 @@ Hosting/runtime strategy; account system; content authoring tools; exact combat 
 ## Checkout note ? 2026-10-31
 
 The checkout began with README.md only. A new modular, mobile-friendly 12-stage prototype now exists. Historical alpha references above are not verified prior files. Current limits: no XP, full runtimes, unique unit abilities, mastery assessment, or complete story endings. See README for exact behavior.
+
+
+## Reconstruction and party update ? 2026-10-31
+
+Implemented: a separate reconstruction screen, skippable motion-aware summon reveal, visible duplicate copy counts, four-slot party assignment, transactional summon rules and version 1-to-2 currency migration. Core Shards replace the currency name; rewards remain 35 per first normal clear and 60 per boss. Real-device testing and duplicate upgrade mechanics remain planned.
+
+
+Five-pull update: Summon now offers five independent random rolls with the same per-pull odds and no rarity guarantee. Normal price is 500 Core Shards, checked before any roll is charged. Unlimited testing currency also covers five-pulls. Every duplicate copy is saved before the shared skippable reveal.
+
+
+## Ascension and failed-cast retaliation ? 2026-10-31
+
+User-approved design revision: failed Cast Spell validation now triggers an enemy attack. This supersedes the older rule that invalid casts never cause retaliation. Run Code remains safe and untimed; retries are free. Current limited validators may reject unsupported valid programs, and that limitation remains visible. No rare unit or ascension is required to win.
+
+Ascension costs are 1, then 3, then 5 **additional** duplicates, capped at three stars (9 duplicates total). Each star adds 20% of base HP, ATK and DEF. Base tank stats: 180 HP / 16 ATK / 12 DEF; healer/support: 100 / 14 / 5; other roles: 110 / 24 / 4. `owned` stores lifetime copies, and spent duplicates are derived from saved stars. Schema 3 migrates versions 1/2 with zero stars and rejects impossible ascensions.
+
+Enemy attack is 36 on normal stages, 44 on bosses. Stages 1/2 use single-target attacks; stage 3 and bosses use AoE. Single attacks choose the first living tank, otherwise the first survivor. Damage is max(1, attack - defense), clamped to remaining HP. AoE resolves once per living member. Health lasts through both boss seals; each stage entry restores health. If everyone falls, Retry restores party HP while retaining the current seal, draft and all earned progress. Distinct healer powers and richer encounter balance remain future work.
+
+
+## Multi-example battle balance update ? 2026-10-31
+
+Current user-approved balance supersedes the older one-cast normal stages, two-seal bosses and 100-code-power formula: every normal stage has 3 distinct practice examples and 180 monster HP; every boss has 4 mixed examples and 240 HP. This applies independently to SQL, Python and Java. The first SQL slime requires SELECT * from enemies, supplies and signals. There are 39 authored examples across the current 12-stage slice, not 39 additional stages or a complete chapter curriculum.
+
+Each solved example resolves 20 baseline basic damage, 40 attack-spell damage and 40 utility points. Utility heals living injured allies before splitting leftover points into shields, which absorb retaliation after defense. This is a 20/40/40 combat-value budget; utility is not extra damage. Ascension scales basic damage up to 25; 2 maximum-power turns cannot defeat 180 HP, and 3 cannot defeat 240 HP. Stage reward and progression require all example objectives. Enemies retaliate only on invalid Cast Spell attempts, with normal ATK 32 and boss ATK 38; Run Code is safe. The starter party can clear everything without rare characters or ascension.
+
+Each authored example includes an objective, visible input/fixture, expected observable result, supported alternatives, edge cases, tiered hints, combat effect and practice-only mastery signal. Normal-stage prerequisites are earlier stages in the same campaign; examples within a stage build in order. SQL retains the same deliberately limited SELECT-only query shapes, parameterized for visible table fixtures; Python/Java remain non-executing pattern demos. Do not call these robust runtimes or mastery assessments. Draft keys now allow example indices 0?3; old saves remain readable. Health retry preserves the current example and enemy HP, with no duplicate rewards. Closing or re-entering a stage restarts its examples.
+
+
+## Individual character skills ? 2026-10-31
+
+All 12 companions now have individual base HP/ATK/DEF and distinct implemented skills. Roster definitions live in scripts/characters.js, successful-cast activation in scripts/character-skills.js, and damage/utility/guard resolution in scripts/combat.js. This supersedes older descriptive-only character-role wording. See docs/CHARACTER_GUIDE.md for the complete stat and skill table.
+
+Sol's legendary Dawn Protocol adds up to 16 healing/shielding points per correct cast and revives the first fallen ally to 35% max HP once per stage attempt. Sol must be alive. Revived allies can fight immediately but do not activate another skill until the next correct cast. Retry and stage entry reset per-attempt skill counters, marks, guard charges and revive allowance; changing examples does not reset them. No persisted save migration is needed because these are encounter-local fields.
+
+The baseline 20 basic / 40 attack spell / 40 utility budget remains. Team caps are 25 basic damage, 50 total attack-spell damage, and +24 utility points per correct cast. Revive HP is an explicitly separate legendary effect. Basic damage scales with living-party ATK relative to the original starter team's 78 ATK, with a floor of 20 to preserve learning-first balance. Utility prioritizes bonus healing, character-directed shields, base healing, then evenly split remaining shields. Byte and Pip route existing utility rather than minting extra points. Guard charges mitigate one matching enemy retaliation after defense and before shields, never stack, and require the source to remain alive. Combined guard effects are allowed; incoming damage has a minimum of one before shielding.
+
+The strongest possible turn deals 75 damage, so 180/240 HP still requires all 3/4 distinct examples. Starter characters remain sufficient. Rarity improves stats, utility and tactical options without becoming a curriculum prerequisite. No skill grants stage credit for wrong code, and Run Code remains safe.
+
+
+## Gradual starter party update ? 2026-10-31
+
+The user clarified that the milestones are **Stages 2, 3 and 4 of the current chapter**, not future chapters. New saves begin with only Byte Knight. Patch joins when Stage 2 unlocks (clear Stage 1), Echo when Stage 3 unlocks (clear Stage 2), and Pip when Stage 4 unlocks (clear Stage 3). All four are Common. The complete free party is ready for the boss; Query Mage is Rare and is no longer a fresh-save starter.
+
+Any independently chosen campaign can trigger these shared recruits. Grants are one-time globally, require contiguous stage clears within a single campaign, never charge currency or require summons, and never generate duplicate copies for an already-owned recruit. Auto-fill unoccupied party slots on recruitment; never replace an existing chosen full team. New-game empty slots are reserved for story arrivals, while summoned reserves can replace occupied slots.
+
+Schema 4 keeps the stable storage key, supports party lengths 1?4 and persists claimed story recruits. Versions 1?3 migrate without removing existing collection, ascensions, shards, drafts or party; eligible recruits are reconciled on load. Byte alone remains sufficient for the introductory encounters under the learning-first damage floor and free retry rules. This supersedes earlier references to four freely granted starting companions. Actual later chapters remain planned.
+
+
+## Learning foundation update ? 2026-10-31
+
+Current implementation supersedes older four-stage/pattern-check descriptions: each route now contains 16 stages across four compact chapters (48 stages / 156 combat examples total). New authored problems use explicit contracts, constraints, sample and transfer cases, tiered hints and progressively longer solutions. Topics cover branching, loops, functions, collections/strings and introductory algorithms; SQL adds aggregates, joins, CTEs and window queries. See docs/LEARNING_PLAN.md for the implemented topic map, reviewed resources and missing comprehensive coverage.
+
+SQL uses real read-only SQLite in disposable browser workers, and Python uses real CPython via a constrained Pyodide worker sandbox. Java uses a bounded AST teaching interpreter with behavioral grading, not compilation/JVM execution. The old text-pattern checks are no longer the live game grader. Unsupported forms and runtime-loading failures do not trigger enemy damage. Run Code checks visible samples; Cast Spell adds transfer tests. All code runs locally in the browser, with documented limits; do not claim production sandbox security or full language support.
+
+Old saved stage clears 0?3 are retained; stage/draft validation now supports 0?15, chapter maps unlock independently, and boss rewards occur every fourth stage. Shared starter recruitment remains at Stage 2/3/4. The nine-chapter full-release curriculum and independent endings remain future work; four compact foundation chapters do not constitute comprehensive language completion. Questions are original, informed by the requested Bro Code Java reference and Helsinki Python MOOC, not copied course exercises.

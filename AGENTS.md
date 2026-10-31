@@ -17,7 +17,7 @@ Build **ESCAPE.EXE**, an accessible browser coding RPG where learners progress t
 
 ## What exists today
 
-Read `README.md` before editing. Current Alpha 0.1 is static `index.html` + `styles.css` + `game.js`, browser localStorage, local PNG art, four stages per language, a toy SQL subset, and regex/pattern Python/Java checks. **No actual Python/Java execution or full SQL engine exists.** Do not describe these validators as production-grade. Planned character powers and story endings are not all implemented.
+Read README.md before editing. The current build has 16 stages per language across four short chapters, modular vanilla HTML/CSS/JavaScript, original canvas pixel art, local saves, skills/ascension and story recruits. SQL executes real read-only SQLite in workers; Python executes real CPython through a restricted Pyodide worker sandbox. Java uses a bounded AST teaching interpreter, **not a JVM or javac**. Advanced curriculum, full Java compilation, complete language coverage and independent story endings remain planned. See docs/LEARNING_PLAN.md and docs/TECHNICAL_PLAN.md for exact boundaries. Historical appended notes below are superseded by the current README.
 
 ## How to implement changes
 
@@ -33,7 +33,7 @@ Read `README.md` before editing. Current Alpha 0.1 is static `index.html` + `sty
 
 - Current stack: vanilla HTML/CSS/JavaScript. Avoid imposing a full framework rewrite in a small feature PR without justification.
 - Use descriptive names, small pure functions for tests and combat rules, predictable IDs, and explicit state/data schemas.
-- The current browser SQL evaluator is not a substitute for SQLite. Replace it deliberately with an isolated real engine, rather than adding an endless regex dialect.
+- SQL now uses isolated disposable SQLite. Keep its real result-based grading and fixture resets; never replace it with a growing regex dialect. Java remains a documented subset and requires a full isolated JVM before advanced Java content.
 - **Never execute arbitrary player Python/Java/SQL in the host application process.** Use isolated, ephemeral execution environments with strict CPU, memory, wall-clock, output, storage and network limits. Mutating SQL tasks need disposable databases and rollback/reset.
 - Test behavior instead of matching exact source strings; recognize semantically valid alternatives. Do not make hidden tests inconsistent with instructions.
 - Never commit secrets, API credentials, student submissions, tokens or unnecessary telemetry.
@@ -59,3 +59,13 @@ For a code change, report: **what changed**, **why**, **files touched**, **how t
 - `docs/TECHNICAL_PLAN.md` — current architecture and safe future implementation.
 - `PROJECT_INSTRUCTIONS_CHATGPT.md` — copyable instructions for the ChatGPT Project.
 - `CONTRIBUTING.md` — collaborator workflow.
+
+
+## Approved combat revision (2026-10-31)
+
+Per the explicit user request, invalid Cast Spell attempts now trigger enemy retaliation. Run Code remains a safe untimed practice action. Preserve free retries, drafts, boss checkpoints and earned progress. This supersedes earlier no-punishment wording for committed casts only. Ascension uses 1/3/5 additional duplicates, capped at three stars. See the design document for formulas.
+
+
+## Approved starter-party revision (2026-10-31)
+
+Fresh saves start with only Byte Knight. Patch, Echo and Pip join as Stages 2, 3 and 4 of the current chapter unlock, respectively (explicit user clarification: stages, not future chapters). Party size grows 1?4; old collections and full parties remain intact. Recruitment is shared, free and once-only across independent campaigns.

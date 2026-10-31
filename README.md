@@ -1,65 +1,91 @@
 # ESCAPE.EXE
 
-A pixel-art coding RPG for desktop and mobile browsers. Restore The System through three independent SQL, Python and Java practice campaigns.
+A pixel-art coding RPG for desktop and phone browsers. Choose SQL, Python or Java independently, solve code challenges, and restore The System.
 
-## Run the game
-
-No dependency installation or build step is needed:
+## Run locally
 
 ```sh
 python -m http.server 8000
 ```
 
-Open http://localhost:8000. Use a server rather than double-clicking index.html: this game uses JavaScript modules.
+Open http://localhost:8000. Use a server, not a double-clicked HTML file: the game uses modules, workers and WebAssembly. No package install or build step is required. Browser runtime assets are included in `vendor/` (about 15 MB), so submitted code is not sent to an external execution service.
 
-For a phone on the same trusted Wi-Fi, use http://YOUR-COMPUTER-LAN-IP:8000 while the server runs. Your firewall must permit the connection. Offline caching requires HTTPS or localhost. Mobile browser Add to Home Screen support varies. This is a mobile-friendly web game, not an App Store or Google Play application.
+On a trusted Wi-Fi network, a phone can open http://YOUR-COMPUTER-LAN-IP:8000 if your firewall allows it. Service-worker offline caching and browser installation require HTTPS or localhost. Real-phone keyboard and installation testing remains manual. This is a web game, not an App Store or Google Play release.
 
-## Playable features
+## Learning that is playable now
 
-- Three immediately available campaigns, each with three lessons and a two-phase boss.
-- Original canvas pixel art, animated companions and a code-powered battle payoff.
-- Separate Run Code and Cast Spell buttons; no coding timer or error penalties.
-- Four starter companions, 12 collectible characters and free earned-byte summons with visible odds.
-- Four-member party selection, one-time rewards, independent progress and a practice journal.
-- Versioned local saves and code drafts, keyboard focus, reduced motion and animation toggle.
-- Right-hand desktop navigation and a viewport-sized desktop shell without page scrolling.
-- Automatic stage advancement after a brief clear result; bosses return to campaigns. Leaving the screen cancels a pending transition.
-- Battle impact, party attack and screen entrance animations; reduced motion and Pause animation suppress them.
-- Portrait layout that collapses the battlefield when editing, and landscape support.
-- Offline app files after a successful first visit on HTTPS or localhost.
+- **16 stages per language**, grouped into four short chapters: 48 stages and 156 combat examples total.
+- Earlier questions teach output, variables and simple queries. Later questions require multi-line functions, conditions, loops, array/list scans, string encoding, nested searches, sliding windows, binary search and mixed review.
+- SQL progresses into sorting, aggregates, joins, empty-group handling, subqueries, CTEs and window functions.
+- Each new problem has a statement, constraints, a function/query contract, visible examples, transfer cases and tiered hints. Difficulty and chapter appear in the interface.
+- **Run Code** checks visible cases safely. **Cast Spell** also checks transfer cases before combat. Results are compared by behavior, not a reference source string.
+- **Full editor** opens a spacious side-by-side problem/editor workspace on desktop. The default view keeps battle visible; committing a cast returns to that view so attacks and retries remain visible.
+- Desktop combat uses compact party status cards and a scrollable combat log to give the battlefield more room.
+- Chapter-end reviews combine earlier concepts. Working general solutions carry forward between batches for the same problem; players do not have to retype an identical function simply to advance combat.
+- Learning is untimed. Runtime-loading failures and unsupported language forms do not trigger monster retaliation.
 
-## Honest prototype limits
+See [Learning plan and source references](docs/LEARNING_PLAN.md) for the topic map, rationale and missing coverage. These are foundation/problem-solving chapters, **not complete language courses or evidence of mastery**. There is no affiliation with Bro Code, Helsinki or LeetCode; game problems and solutions are original.
 
-SQL is a small read-only SELECT subset over the visible dataset, not SQLite. There are no hidden fixtures. Python and Java use anchored practice pattern checks, **not execution or compilation**. Many valid programs are unsupported. Java input represents statements inside main; stage 1 shows the full program wrapper. Player source never goes to eval, a shell or a host runtime.
+## What actually runs
 
-Combat is a visual code-powered payoff. Character roles are descriptive: unique abilities, enemy retaliation, XP, full curricula, mastery assessments and complete story endings are planned. Duplicates are tracked but do not upgrade characters. There are no payments, accounts, analytics or cloud saves. Clearing browser storage removes progress.
+| Route | Current evaluator | Important boundary |
+| --- | --- | --- |
+| SQL | SQLite via sql.js, in a disposable browser worker | Read-only disposable fixtures; local row/result and heap limits |
+| Python | Real CPython via Pyodide, in a disposable browser worker | Beginner sandbox: functions, loops, collections and selected built-ins; imports, files, classes, private access and some syntax are restricted |
+| Java | Bounded Java teaching interpreter executing a parsed AST in a browser worker | **Not a JVM or javac.** Supports the documented integer/Boolean/String/one-dimensional-array/static-method subset; no imports, objects, inheritance or full Java library |
 
-## Human-readable project layout
+Java starters represent methods inside a supplied `Solution` class, or early statements inside `main`; examples explain the full-program context. Valid Java outside the supported subset can be rejected and is labeled unsupported where detected. A full isolated compiler/JVM is the next Java infrastructure milestone.
+
+Workers are terminated after grading or timeout. Each test gets a fresh Python namespace, Java environment or SQLite database. Limits include source/output sizes, execution steps, bounded collections and a 2.5-second per-case wall budget after runtime readiness; initial runtime load has 45 seconds. SQLite uses a 16 MB allocation ceiling. Browser memory behavior is not an OS/container RAM guarantee, so this local educational runner is not a production multi-tenant judging service. Never run arbitrary player code in a host Python/Java process. Tests and reference solutions are shipped to the browser; they are not secret exam infrastructure.
+
+## Party and combat
+
+New saves start with **Byte Knight only**. Patch joins when Stage 2 unlocks, Echo at Stage 3 and Pip at Stage 4, in whichever language you choose first. Recruitment is shared, free and once-only. Existing saves retain earned collection, party, ascension, drafts and progress.
+
+Normal fights require three examples and have 180 HP; chapter bosses require four and have 240 HP. Baseline correct-code turns provide 20 basic damage, 40 attack-spell damage and 40 healing/shield utility. Skills can increase this within caps of 25 basic damage, 50 spell damage and +24 utility, so rare characters never skip required examples. Failed committed casts trigger single-target tank-first or AoE retaliation. Free health retry preserves the current example, enemy HP, draft and rewards.
+
+All 12 companions have working individual skills; see [Character guide](docs/CHARACTER_GUIDE.md). Skill explanations appear in each character's description in Your party; successful combat messages stay brief. Ascension costs 1, then 3, then 5 additional duplicates, capped at three stars. Each star increases individual base HP/ATK/DEF by 20%.
+
+The Summon tab supports single and five-pull random rolls with explicit duplicate counts. This testing build defaults to unlimited shards. Add `?shards=earned` to use normal costs (100/500) and rewards (35 per first normal clear, 60 per chapter boss). There are no payments, accounts, analytics or cloud saves.
+
+## Human-readable source layout
 
 ```text
-index.html                 Game screens and accessible controls
-styles/game.css            Colors, layout, desktop and phone styles
-scripts/campaigns.js        Lessons, datasets and character roster
-scripts/code-checks.js      Clearly limited practice validators
-scripts/save-data.js        Save loading, rewards and summon rules
-scripts/pixel-art.js        Original pixel scenery and characters
-scripts/game.js             Navigation, editor and battle interactions
-scripts/run-tests.mjs       Dependency-free behavior tests
-scripts/browser-tests.mjs   Headless Edge layout and game-flow tests
-assets/icon.svg            Original app icon
-manifest.webmanifest       Mobile web app metadata
-service-worker.js          Offline app cache
-docs/                      Design references and technical plan
+index.html                          Accessible screens and editor controls
+styles/game.css                     Desktop shell and mobile layouts
+scripts/campaigns.js                 Campaign metadata and initial chapter
+scripts/lesson-exercises.js          Introductory examples
+scripts/curriculum/                  Progressive problem statements and test fixtures
+scripts/code-checks.js               Live asynchronous grading entry point
+scripts/behavior-grading.js          Worker orchestration and result comparison
+scripts/runners/                     SQLite, Python and bounded Java execution
+scripts/characters.js                Individual character stats and descriptions
+scripts/character-skills.js          Correct-cast skill effects
+scripts/combat.js                    Damage, healing, shielding and targeting
+scripts/save-data.js                 Save validation, rewards and recruitment
+scripts/game.js                      Navigation and interactions
+scripts/pixel-art.js                 Original pixel artwork
+scripts/run-tests.mjs                Dependency-free rule and interpreter checks
+scripts/browser-tests.mjs            Browser layout, learning and game-flow checks
+scripts/legacy-code-checks.js        Historical regression fixture; unused by the game
+vendor/                             Pinned runtime assets, licenses and checksums
+docs/                               Design, curriculum and technical documentation
 ```
 
-## Verification
+## Verification commands
 
-With Node.js installed, run `node scripts/run-tests.mjs`. Check JavaScript syntax with `node --check scripts/game.js`. On Windows with Microsoft Edge installed, run `node scripts/browser-tests.mjs` for local headless browser regression checks. These cover desktop screen fit, right navigation, Run/Cast separation, invalid input, automatic progression in each campaign, cancellation when navigating away, mobile horizontal overflow and reduced motion. The browser test uses an isolated profile inside ignored `.tools/` and requires local loopback networking.
+With Node.js installed:
 
-Real iOS/Android soft keyboards, home-screen installation and manual keyboard navigation still require device verification. Longer datasets, output and roster content can scroll within their desktop panels; the desktop page itself stays in the viewport.
+```sh
+node scripts/run-tests.mjs
+node scripts/browser-tests.mjs --layout-only
+node scripts/browser-tests.mjs --learning-only
+node scripts/browser-tests.mjs --runtime-smoke
+node scripts/browser-tests.mjs
+```
 
-## Source documents
+Browser checks require Windows with Microsoft Edge installed and local loopback networking. They use isolated profiles and artifacts under ignored `.tools/`. `--learning-only` grades all 156 authored examples through their browser runtimes; `--runtime-smoke` checks generalization and nontermination. The full suite plays every campaign from a fresh save and checks progression, recruits, combat, summons and layouts.
 
-The supplied design, roadmap, project instructions and contributor instructions are retained in this repository. Their historical alpha descriptions referenced files absent from this checkout, which originally contained only README.md. This implementation is a new bounded prototype. See the limits above for what actually exists.
+Latest verification: 127 rule/interpreter checks, 378 full browser-flow checks, 54 long-problem/layout checks and 43 runtime-smoke checks passed. These automated browser checks do not replace testing a physical phone and its keyboard.
 
-Verified in this checkout: 45 behavior checks passed; JavaScript syntax, HTML references, unique element IDs and manifest JSON checks passed. Browser visual and real-device checks were not run. A local Node.js test runtime lives in ignored `.tools/`; it is not a game dependency.
+Existing schema-4 saves keep their first four clears and can continue into the new chapters. Save validation now accepts stage indices 0 through 15 and up to 12,000 characters per draft. No existing save is automatically reset. Use an incognito window to inspect the new-game opening.

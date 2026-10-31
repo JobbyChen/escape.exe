@@ -1,3 +1,5 @@
+import { extendedStages } from "./curriculum/stage-builder.js";
+import { lessonExercises } from "./lesson-exercises.js";
 // Independent campaign content. New chapters belong here, not in UI code.
 const sqlLessons = [
   [
@@ -91,9 +93,9 @@ function languageLessons(java) {
     ],
   ];
 }
-function stages(rows) {
+function stages(rows, language) {
   return rows.map(
-    ([title, objective, lesson, example, starter, solution, kind]) => ({
+    ([title, objective, lesson, example, starter, solution, kind], index) => ({
       title,
       objective,
       lesson,
@@ -101,6 +103,22 @@ function stages(rows) {
       starter,
       solution,
       kind,
+      isBoss: index === 3,
+      chapter: 1,
+      chapterTitle: "First signals",
+      difficulty: "Beginner",
+      exercises: lessonExercises(language, index),
+      enemy: {
+        name:
+          index === 0
+            ? "Glitch Slime"
+            : index === 3
+              ? "Core Guardian"
+              : "NULL creature",
+        hp: index === 3 ? 240 : 180,
+        type: index >= 2 ? "aoe" : "single",
+        attack: index === 3 ? 38 : 32,
+      },
     }),
   );
 }
@@ -113,7 +131,7 @@ export const campaigns = [
     color: "#f6cf77",
     description:
       "Beneath the dust, every record holds a secret. Recover the data NULL tried to erase.",
-    stages: stages(sqlLessons),
+    stages: [...stages(sqlLessons, "sql"), ...extendedStages("sql")],
   },
   {
     id: "python",
@@ -123,7 +141,10 @@ export const campaigns = [
     color: "#bcf484",
     description:
       "Lost loops wind through a living jungle. Bring order to the wild, one line at a time.",
-    stages: stages(languageLessons(false)),
+    stages: [
+      ...stages(languageLessons(false), "python"),
+      ...extendedStages("python"),
+    ],
   },
   {
     id: "java",
@@ -133,7 +154,10 @@ export const campaigns = [
     color: "#a6c8f5",
     description:
       "Silent engines wait behind iron gates. Reboot the machines and reclaim the citadel.",
-    stages: stages(languageLessons(true)),
+    stages: [
+      ...stages(languageLessons(true), "java"),
+      ...extendedStages("java"),
+    ],
   },
 ];
 export const enemies = [
@@ -141,17 +165,4 @@ export const enemies = [
   { id: 2, name: "Sentinel", armor: 20, hp: 60 },
   { id: 3, name: "Wisp", armor: 12, hp: 25 },
 ];
-export const characters = [
-  ["byte", "Byte Knight", "Tank", "Common", "#a6c8f5"],
-  ["patch", "Patch", "Healer", "Common", "#bcf484"],
-  ["query", "Query Mage", "Caster", "Rare", "#f6cf77"],
-  ["echo", "Echo", "Ranged", "Common", "#f49a8f"],
-  ["fern", "Fern Scout", "Ranged", "Common", "#80cba0"],
-  ["bolt", "Bolt", "Tank", "Rare", "#c8b4e9"],
-  ["pip", "Pip", "Support", "Common", "#f1b58f"],
-  ["rune", "Rune", "Caster", "Rare", "#78cbd1"],
-  ["nova", "Nova", "Caster", "Epic", "#e9a6d2"],
-  ["atlas", "Atlas", "Tank", "Epic", "#b5bdcf"],
-  ["zero", "Zero", "Assassin", "Legendary", "#ffffff"],
-  ["sol", "Sol", "Support", "Legendary", "#ffe58c"],
-].map(([id, name, role, rarity, color]) => ({ id, name, role, rarity, color }));
+export { characters } from "./characters.js";
