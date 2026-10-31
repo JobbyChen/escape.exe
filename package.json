@@ -1,0 +1,9 @@
+{
+  "name": "escape-exe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/run-tests.mjs"
+  }
+}

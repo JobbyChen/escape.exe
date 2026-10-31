@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101c24" />
+    <title>ESCAPE.EXE ? Code your escape</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/icon.svg" />
+    <link rel="stylesheet" href="styles/game.css" />
+  </head>
+  <body data-page="worlds">
+    <header>
+      <a href="./" class="brand"><b>E</b> ESCAPE<span>.EXE</span></a
+      ><small>THE SYSTEM / TERMINAL 001</small>
+      <div class="wallet">
+        ? <span id="gems">200</span> <small>BYTES</small>
+      </div>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">A PROGRAMMER. A BROKEN WORLD. A WAY OUT.</p>
+          <h1>Your code is<br />your <em>superpower.</em></h1>
+          <p>
+            NULL corrupted The System. Restore its cores,<br />assemble your
+            party, and write your escape.
+          </p>
+        </div>
+        <div class="terminal">
+          ? CONNECTION ESTABLISHED<br /><span
+            >player_001 has entered The System.</span
+          ><br />&gt; awaiting your next move_
+        </div>
+      </section>
+      <nav aria-label="Game screens">
+        <button data-page="worlds" aria-current="page">01 / Campaigns</button
+        ><button data-page="party">02 / Your party</button
+        ><button data-page="journal">03 / Codex</button
+        ><small>LOCAL SAVE ?</small>
+      </nav>
+      <section id="worlds">
+        <div class="heading">
+          <div>
+            <p class="eyebrow">CHOOSE YOUR OWN PATH</p>
+            <h2>Three worlds. One escape.</h2>
+          </div>
+          <p>Start with any language.<br />Your progress is independent.</p>
+        </div>
+        <div id="world-list"></div>
+        <p class="footnote">
+          ? No timers. No paid advantages. Just you and your code.
+        </p>
+      </section>
+      <section id="party" hidden>
+        <div class="heading">
+          <h2>Your digital companions</h2>
+          <button id="summon">Summon ? 100 ?</button>
+        </div>
+        <p>
+          Choose a party member, then an owned reserve to replace them. Four
+          starter companions are enough for every stage.
+        </p>
+        <p class="muted">
+          Free earned bytes only. Common 55% ? Rare 30% ? Epic 12% ? Legendary
+          3%. Duplicates tracked. No pity system.
+        </p>
+        <div id="roster"></div>
+        <p id="party-message" role="status"></p>
+      </section>
+      <section id="journal" hidden>
+        <div class="heading"><h2>The Codex</h2></div>
+        <div id="entries"></div>
+        <p class="muted">
+          Practice completion is recorded here, not language mastery.
+        </p>
+      </section>
+      <section id="adventure" hidden>
+        <button id="back" class="text-button">? Campaigns</button>
+        <div class="heading">
+          <div>
+            <p id="world-label" class="eyebrow"></p>
+            <h2 id="stage-title" tabindex="-1"></h2>
+          </div>
+          <span id="stage-count"></span>
+        </div>
+        <div id="stage-map" aria-label="Stage selection"></div>
+        <div class="play-layout">
+          <section class="battle-panel">
+            <div class="panel-label">
+              <span id="location"></span><span>NO TIMER</span>
+            </div>
+            <canvas
+              id="battle"
+              width="640"
+              height="300"
+              role="img"
+              aria-label="Your pixel companions face a corruption creature"
+            ></canvas>
+            <div class="health">
+              <span>NULL creature</span
+              ><progress
+                id="hp"
+                max="100"
+                value="100"
+                aria-label="Enemy health"
+              ></progress
+              ><span id="hp-text">100 / 100</span>
+            </div>
+            <div id="battle-party"></div>
+            <p id="combat-log" role="status">Correct code powers your party.</p>
+          </section>
+          <section class="coding-panel">
+            <div class="panel-label">
+              <span id="language"></span><span>LEARN ? RUN ? CAST</span>
+            </div>
+            <div class="editor-content">
+              <h3 id="objective"></h3>
+              <p id="lesson"></p>
+              <pre id="example"></pre>
+              <label for="code"
+                >YOUR CODE <span>Draft saved as you type</span></label
+              ><textarea
+                id="code"
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+                autocorrect="off"
+                aria-describedby="runtime-note"
+              ></textarea>
+              <p id="runtime-note" class="muted"></p>
+              <div class="actions">
+                <button id="hint" class="secondary">Hint</button
+                ><button id="run" class="secondary">? Run code</button
+                ><button id="cast">? Cast spell</button>
+              </div>
+              <pre id="output" role="status" aria-live="polite"></pre>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <span>ESCAPE.EXE / PLAYABLE PROTOTYPE v0.1</span
+      ><button id="motion" class="text-button" aria-pressed="false">
+        Pause animation
+      </button>
+    </footer>
+    <script type="module" src="scripts/game.js"></script>
+  </body>
+</html>
