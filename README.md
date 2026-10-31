@@ -42,9 +42,11 @@ Workers are terminated after grading or timeout. Each test gets a fresh Python n
 
 New saves start with **Byte Knight only**. Patch joins when Stage 2 unlocks, Echo at Stage 3 and Pip at Stage 4, in whichever language you choose first. Recruitment is shared, free and once-only. Existing saves retain earned collection, party, ascension, drafts and progress.
 
-Normal fights require three examples and have 180 HP; chapter bosses require four and have 240 HP. Baseline correct-code turns provide 20 basic damage, 40 attack-spell damage and 40 healing/shield utility. Skills can increase this within caps of 25 basic damage, 50 spell damage and +24 utility, so rare characters never skip required examples. Failed committed casts trigger single-target tank-first or AoE retaliation. Free health retry preserves the current example, enemy HP, draft and rewards.
+Normal fights require three examples and have 180 HP; chapter bosses require four and have 240 HP. Baseline correct-code turns provide 20-25 basic damage, 40 attack-spell damage and 40 healing/shield utility. Optional charged skills resolve separately and cannot deliver a finishing blow or replace required lesson examples. Failed committed casts trigger single-target tank-first or AoE retaliation. Free health retry preserves the current example, enemy HP, draft and rewards.
 
-All 12 companions have working individual skills; see [Character guide](docs/CHARACTER_GUIDE.md). Skill explanations appear in each character's description in Your party; successful combat messages stay brief. Ascension costs 1, then 3, then 5 additional duplicates, capped at three stars. Each star increases individual base HP/ATK/DEF by 20%.
+All 12 companions have manual individual skills; see [Character guide](docs/CHARACTER_GUIDE.md). Each living character earns 8 bits per lesson auto-attack. Eight bits equal one Byte; characters need 12-24 bits, with each ascension star reducing the cost by 1 bit. A full charge lights up the character border: click the portrait and solve its character-themed prompt in your campaign language to activate. Run Code is safe practice; Use Skill spends charge only on success. Failed committed skill prompts trigger normal retaliation and preserve charge. Skills do not advance lessons, generate more bits, award shards or land a finishing blow. Charge resets on stage entry or free retry.
+
+Skill explanations and charge costs appear in each character's description in Your party; successful combat messages stay brief. Ascension costs 1, then 3, then 5 additional duplicates, capped at three stars. Each star increases individual base HP/ATK/DEF by 20%.
 
 The Summon tab supports single and five-pull random rolls with explicit duplicate counts. This testing build defaults to unlimited shards. Add `?shards=earned` to use normal costs (100/500) and rewards (35 per first normal clear, 60 per chapter boss). There are no payments, accounts, analytics or cloud saves.
 
@@ -61,6 +63,8 @@ scripts/behavior-grading.js          Worker orchestration and result comparison
 scripts/runners/                     SQLite, Python and bounded Java execution
 scripts/characters.js                Individual character stats and descriptions
 scripts/character-skills.js          Correct-cast skill effects
+scripts/skill-charge.js              Character bit costs and charge rules
+scripts/skill-prompts.js             Character-themed coding prompts
 scripts/combat.js                    Damage, healing, shielding and targeting
 scripts/save-data.js                 Save validation, rewards and recruitment
 scripts/game.js                      Navigation and interactions
@@ -81,11 +85,12 @@ node scripts/run-tests.mjs
 node scripts/browser-tests.mjs --layout-only
 node scripts/browser-tests.mjs --learning-only
 node scripts/browser-tests.mjs --runtime-smoke
+node scripts/browser-tests.mjs --skills-only
 node scripts/browser-tests.mjs
 ```
 
 Browser checks require Windows with Microsoft Edge installed and local loopback networking. They use isolated profiles and artifacts under ignored `.tools/`. `--learning-only` grades all 156 authored examples through their browser runtimes; `--runtime-smoke` checks generalization and nontermination. The full suite plays every campaign from a fresh save and checks progression, recruits, combat, summons and layouts.
 
-Latest verification: 127 rule/interpreter checks, 378 full browser-flow checks, 54 long-problem/layout checks and 43 runtime-smoke checks passed. These automated browser checks do not replace testing a physical phone and its keyboard.
+Latest manual-skill verification: 128 rule/interpreter checks, 87 manual-skill/layout browser checks and 57 combat regression browser checks passed. All 12 character prompts were graded in SQL, Python and Java at introductory and function/query difficulty. These automated browser checks do not replace testing a physical phone and its keyboard.
 
 Existing schema-4 saves keep their first four clears and can continue into the new chapters. Save validation now accepts stage indices 0 through 15 and up to 12,000 characters per draft. No existing save is automatically reset. Use an incognito window to inspect the new-game opening.

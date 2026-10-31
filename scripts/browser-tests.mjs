@@ -305,7 +305,138 @@ try {
       }
     }
   }
-  if (
+  if (process.argv.includes("--skills-only")) {
+    await send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+    });
+    for (const language of ["sql", "python", "java"])
+      for (const stage of [0, 4]) {
+        const completed = { sql: [], python: [], java: [] };
+        completed[language] = Array.from({ length: stage }, (_, i) => i);
+        await evaluate(
+          `localStorage.setItem('escape-exe-save-v1',JSON.stringify(${JSON.stringify({ version: 4, shards: 200, owned: { byte: 1, sol: 1, query: 1, echo: 1 }, party: ["byte", "sol", "query", "echo"], completed, ascensions: {}, storyRecruits: [] })}));location.reload()`,
+        );
+        await pause(700);
+        await evaluate(
+          `document.querySelectorAll('.world-card button')[${["sql", "python", "java"].indexOf(language)}].click()`,
+        );
+        const readCharge = () =>
+          evaluate(
+            'document.querySelector("[data-unit=byte] .skill-charge").value',
+          );
+        check(
+          `${language} stage ${stage + 1} begins with empty charge`,
+          () => {},
+        );
+        assert.equal(await readCharge(), 0);
+        for (let i = 0; i < 2; i++) {
+          await evaluate(
+            `document.querySelector('#code').value=${JSON.stringify(campaigns.find((world) => world.id === language).stages[stage].exercises[i].solution)};document.querySelector('#cast').click()`,
+          );
+          await pause(100);
+        }
+        const snapshot = await evaluate(
+          '({charge:document.querySelector("[data-unit=byte] .skill-charge").value,ready:document.querySelector("[data-unit=byte]").classList.contains("skill-ready"),sol:document.querySelector("[data-unit=sol] .skill-trigger").disabled,phase:document.querySelector("#exercise-progress").textContent,draft:document.querySelector("#code").value,save:localStorage.getItem("escape-exe-save-v1")})',
+        );
+        check(
+          `${language} two attacks charge Byte while Sol needs a third`,
+          () => {
+            assert.equal(snapshot.charge, 12);
+            assert.equal(snapshot.ready, true);
+            assert.equal(snapshot.sol, true);
+          },
+        );
+        await click("[data-unit=byte] .skill-trigger");
+        assert.equal(
+          await evaluate('document.querySelector("#skill-dialog").open'),
+          true,
+        );
+        await evaluate(
+          'document.querySelector("#skill-code").value="wrong";document.querySelector("#skill-run").click()',
+        );
+        check(`${language} safe skill practice preserves charge`, () => {});
+        assert.equal(await readCharge(), 12);
+        await click("#skill-use");
+        assert.equal(
+          await evaluate('document.querySelector("#skill-dialog").open'),
+          false,
+        );
+        assert.equal(await readCharge(), 12);
+        await click("[data-unit=byte] .skill-trigger");
+        const solution = await evaluate(
+          `(async()=>{const {skillPrompt}=await import('./scripts/skill-prompts.js');const {characters}=await import('./scripts/characters.js');return skillPrompt(characters[0],${JSON.stringify(language)},${stage}).solution})()`,
+        );
+        await evaluate(
+          `document.querySelector('#skill-code').value=${JSON.stringify(solution)};document.querySelector('#skill-run').click()`,
+        );
+        assert.equal(await readCharge(), 12);
+        if (stage === 4) {
+          await evaluate(
+            `document.querySelector('#skill-code').value=${JSON.stringify(language === "sql" ? "SELECT * FROM firewall;" : language === "python" ? "def solve(power):\n    return 9" : "static int solve(int power) { return 9; }")};document.querySelector('#skill-use').click()`,
+          );
+          assert.equal(await readCharge(), 12);
+          await click("[data-unit=byte] .skill-trigger");
+        }
+        await evaluate(
+          `document.querySelector('#skill-code').value=${JSON.stringify(solution)};document.querySelector('#skill-use').click();document.querySelector('#skill-use').click()`,
+        );
+        const after = await evaluate(
+          '({charge:document.querySelector("[data-unit=byte] .skill-charge").value,phase:document.querySelector("#exercise-progress").textContent,draft:document.querySelector("#code").value,save:localStorage.getItem("escape-exe-save-v1"),open:document.querySelector("#skill-dialog").open,ready:document.querySelector("[data-unit=byte]").classList.contains("skill-ready")})',
+        );
+        check(
+          `${language} skill spends once and preserves lesson draft, progress and rewards`,
+          () => {
+            assert.equal(after.charge, 0);
+            assert.equal(after.ready, false);
+            assert.equal(after.open, false);
+            assert.equal(after.phase, snapshot.phase);
+            assert.equal(after.draft, snapshot.draft);
+            assert.equal(after.save, snapshot.save);
+          },
+        );
+        await click("[data-unit=query] .skill-trigger");
+        for (const [width, height] of [
+          [1920, 1080],
+          [390, 844],
+          [844, 390],
+        ]) {
+          await send("Emulation.setDeviceMetricsOverride", {
+            width,
+            height,
+            deviceScaleFactor: 1,
+            mobile: width < 1024,
+          });
+          const bounds = await evaluate(
+            '({dialog:document.querySelector("#skill-dialog").getBoundingClientRect().toJSON(),width:innerWidth,height:innerHeight})',
+          );
+          check(`skill prompt fits ${language} ${width}x${height}`, () => {
+            assert.ok(bounds.dialog.x >= 0);
+            assert.ok(bounds.dialog.right <= width);
+            assert.ok(bounds.dialog.height <= height);
+          });
+        }
+        await click("#close-skill");
+        await send("Emulation.setDeviceMetricsOverride", {
+          width: 1280,
+          height: 720,
+          deviceScaleFactor: 1,
+          mobile: false,
+        });
+      }
+    for (const language of ["sql", "python", "java"]) {
+      const results = await evaluate(
+        `(async()=>{const {gradeBehavior}=await import('./scripts/behavior-grading.js');const {skillPrompt}=await import('./scripts/skill-prompts.js');const {characters}=await import('./scripts/characters.js');const results=[];for(const unit of characters)for(const stage of [0,4]){const prompt=skillPrompt(unit,${JSON.stringify(language)},stage);const result=await gradeBehavior(${JSON.stringify(language)},prompt,prompt.solution,true);results.push({unit:unit.id,stage,...result});}return results})()`,
+      );
+      check(
+        `${language} all character prompt solutions pass real browser grading`,
+        () => {
+          for (const result of results)
+            assert.equal(result.ok, true, JSON.stringify(result));
+        },
+      );
+    }
+    console.log(`${checks} layout and manual skill checks passed.`);
+  } else if (
     process.argv.includes("--learning-only") ||
     process.argv.includes("--runtime-smoke")
   ) {
@@ -390,14 +521,11 @@ try {
       const revival = await evaluate(
         '({hp:document.querySelector("[data-unit=byte] progress").value,log:document.querySelector("#combat-log").textContent,progress:document.querySelector("#exercise-progress").textContent})',
       );
-      check(
-        "Lesson casts do not activate Sol automatically",
-        () => {
-          assert.equal(revival.hp, 0);
-          assert.equal(revival.log, "Your party strikes.");
-          assert.match(revival.progress, /Example 2/);
-        },
-      );
+      check("Lesson casts do not activate Sol automatically", () => {
+        assert.equal(revival.hp, 0);
+        assert.equal(revival.log, "Your party strikes.");
+        assert.match(revival.progress, /Example 2/);
+      });
       await evaluate(
         `(async()=>{document.querySelector('#code').value='wrong';for(let i=0;i<15 && document.querySelector('[data-unit=byte] progress').value>0;i++){document.querySelector('#cast').click();while(document.body.getAttribute('aria-busy')==='true')await new Promise(resolve=>setTimeout(resolve,15));await new Promise(resolve=>setTimeout(resolve,80));}})()`,
       );

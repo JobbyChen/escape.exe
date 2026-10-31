@@ -239,7 +239,10 @@ function renderBattleParty() {
     const trigger = element("button", undefined, "skill-trigger");
     trigger.append(sprite(unit));
     trigger.disabled = !ready;
-    trigger.setAttribute("aria-label", `${unit.name}: ${unit.skill.name}. ${ready ? 'Ready to use' : `${unit.bits}/${skillBitCost(unit)} bits`}`);
+    trigger.setAttribute(
+      "aria-label",
+      `${unit.name}: ${unit.skill.name}. ${ready ? "Ready to use" : `${unit.bits}/${skillBitCost(unit)} bits`}`,
+    );
     trigger.onclick = () => openSkill(unit.id);
     block.append(
       trigger,
@@ -259,7 +262,16 @@ function renderBattleParty() {
     charge.max = skillBitCost(unit);
     charge.value = unit.bits;
     charge.setAttribute("aria-label", `${unit.name} skill charge`);
-    block.append(element("small", ready ? 'Skill ready · click icon' : `${unit.bits}/${skillBitCost(unit)} bits`, "charge-label"), charge);
+    block.append(
+      element(
+        "small",
+        ready
+          ? "Skill ready · click icon"
+          : `${unit.bits}/${skillBitCost(unit)} bits`,
+        "charge-label",
+      ),
+      charge,
+    );
     $("battle-party").append(block);
   });
   const enemy = world.stages[stageIndex].enemy;
@@ -270,16 +282,18 @@ function renderBattleParty() {
 }
 function openSkill(id) {
   if (busy || won || partyDefeated) return;
-  const unit = battleParty.find(ally => ally.id === id);
+  const unit = battleParty.find((ally) => ally.id === id);
   if (!unit || !skillReady(unit)) return;
   activeSkill = { id, prompt: skillPrompt(unit, world.id, stageIndex) };
   $("skill-title").textContent = `${unit.name} / ${unit.skill.name}`;
   $("skill-objective").textContent = activeSkill.prompt.objective;
   $("skill-example").textContent = activeSkill.prompt.example;
   $("skill-code").value = activeSkill.prompt.starter;
-  $("skill-cost").textContent = `Cost: ${skillBitCost(unit) / 8} Bytes (${skillBitCost(unit)} bits). Auto-attacks earn ${BITS_PER_ATTACK} bits. This prompt does not advance the lesson.`;
+  $("skill-cost").textContent =
+    `Cost: ${skillBitCost(unit) / 8} Bytes (${skillBitCost(unit)} bits). Auto-attacks earn ${BITS_PER_ATTACK} bits. This prompt does not advance the lesson.`;
   $("skill-runtime").textContent = $("runtime-note").textContent;
-  $("skill-feedback").textContent = 'Run code to practice safely. Use skill checks your answer and spends charge only on success; incorrect committed answers trigger an enemy attack.';
+  $("skill-feedback").textContent =
+    "Run code to practice safely. Use skill checks your answer and spends charge only on success; incorrect committed answers trigger an enemy attack.";
   $("skill-dialog").showModal();
   $("skill-code").focus();
 }
@@ -291,46 +305,73 @@ async function checkSkill(commit) {
   if (busy || !activeSkill) return;
   const selected = activeSkill;
   busy = true;
-  document.body.setAttribute('aria-busy', 'true');
-  for (const id of ['skill-run', 'skill-use', 'skill-hint', 'close-skill']) $(id).disabled = true;
+  document.body.setAttribute("aria-busy", "true");
+  for (const id of ["skill-run", "skill-use", "skill-hint", "close-skill"])
+    $(id).disabled = true;
   $("skill-code").readOnly = true;
-  $("skill-feedback").textContent = 'Checking skill code...';
+  $("skill-feedback").textContent = "Checking skill code...";
   renderMap();
   let result;
   try {
-    result = await gradeBehavior(world.id, selected.prompt, $("skill-code").value, commit);
+    result = await gradeBehavior(
+      world.id,
+      selected.prompt,
+      $("skill-code").value,
+      commit,
+    );
   } catch (error) {
-    result = { ok: false, kind: 'unavailable', message: 'Runtime unavailable: ' + error.message };
+    result = {
+      ok: false,
+      kind: "unavailable",
+      message: "Runtime unavailable: " + error.message,
+    };
   } finally {
     busy = false;
-    document.body.setAttribute('aria-busy', 'false');
-    for (const id of ['skill-run', 'skill-use', 'skill-hint', 'close-skill']) $(id).disabled = false;
+    document.body.setAttribute("aria-busy", "false");
+    for (const id of ["skill-run", "skill-use", "skill-hint", "close-skill"])
+      $(id).disabled = false;
     $("skill-code").readOnly = false;
     renderMap();
   }
   $("skill-feedback").textContent = result.message;
   if (!commit) return;
   if (!result.ok) {
-    if (!['unavailable', 'unsupported'].includes(result.kind)) {
+    if (!["unavailable", "unsupported"].includes(result.kind)) {
       closeSkill();
       await enemyRetaliation();
     }
     return;
   }
-  const turn = resolveLessonTurn(battleParty, Number($("hp").value), currentExercise() ? 1 : 0, selected.id);
-  if (!turn) { closeSkill(); return; }
-  const unit = battleParty.find(ally => ally.id === selected.id);
+  const turn = resolveLessonTurn(
+    battleParty,
+    Number($("hp").value),
+    world.stages[stageIndex].exercises.length - phase,
+    selected.id,
+  );
+  if (!turn) {
+    closeSkill();
+    return;
+  }
+  const unit = battleParty.find((ally) => ally.id === selected.id);
   $("hp").value = turn.hp;
-  $("hp-text").textContent = `${turn.hp} / ${world.stages[stageIndex].enemy.hp}`;
+  $("hp-text").textContent =
+    `${turn.hp} / ${world.stages[stageIndex].enemy.hp}`;
   closeSkill();
   renderBattleParty();
   drawFrame(0);
   $("combat-log").textContent = `${unit.name} used ${unit.skill.name}.`;
   $("code").focus();
 }
-$("close-skill").onclick = () => { if (!busy) closeSkill(); };
-$("skill-dialog").addEventListener('cancel', event => { if (busy) event.preventDefault(); else activeSkill = null; });
-$("skill-hint").onclick = () => { if (activeSkill) $("skill-feedback").textContent = activeSkill.prompt.hint; };
+$("close-skill").onclick = () => {
+  if (!busy) closeSkill();
+};
+$("skill-dialog").addEventListener("cancel", (event) => {
+  if (busy) event.preventDefault();
+  else activeSkill = null;
+});
+$("skill-hint").onclick = () => {
+  if (activeSkill) $("skill-feedback").textContent = activeSkill.prompt.hint;
+};
 $("skill-run").onclick = () => checkSkill(false);
 $("skill-use").onclick = () => checkSkill(true);
 async function enemyRetaliation() {
@@ -523,7 +564,10 @@ function renderParty() {
         `${unit.skill.name}: ${unit.skill.description}`,
         "character-skill",
       ),
-      element("p", `Skill charge: ${skillBitCost(unit, stars)} bits (${skillBitCost(unit, stars) / 8} Bytes). Auto-attacks earn 8 bits. Each ascension star reduces the cost by 1 bit. Click a charged battle portrait and solve its prompt to activate.`),
+      element(
+        "p",
+        `Skill charge: ${skillBitCost(unit, stars)} bits (${skillBitCost(unit, stars) / 8} Bytes). Auto-attacks earn 8 bits. Each ascension star reduces the cost by 1 bit. Click a charged battle portrait and solve its prompt to activate.`,
+      ),
       button,
       ascend,
     );

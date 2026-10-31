@@ -448,7 +448,7 @@ test("all 12 companions have unique skills and Sol has stronger individual stats
     assert.ok(sol[stat] > pip[stat]);
 });
 function useSkill(party, id, hp = 180) {
-  const unit = party.find(ally => ally.id === id);
+  const unit = party.find((ally) => ally.id === id);
   unit.bits = skillBitCost(unit);
   return resolveLessonTurn(party, hp, 1, id);
 }
@@ -463,17 +463,17 @@ test("lesson attacks charge living allies without automatically activating skill
   assert.equal(turn.utility, 40);
 });
 test("different costs, readiness after two or three attacks, charge caps and ascension", () => {
-  const party = characters.map(unit => member(unit.id));
-  assert.equal(new Set(party.map(unit => skillBitCost(unit))).size, 12);
+  const party = characters.map((unit) => member(unit.id));
+  assert.equal(new Set(party.map((unit) => skillBitCost(unit))).size, 12);
   chargeFromAttack(party);
-  assert.ok(party.every(unit => !skillReady(unit)));
+  assert.ok(party.every((unit) => !skillReady(unit)));
   chargeFromAttack(party);
-  assert.equal(skillReady(party.find(unit => unit.id === "byte")), true);
-  assert.equal(skillReady(party.find(unit => unit.id === "sol")), false);
+  assert.equal(skillReady(party.find((unit) => unit.id === "byte")), true);
+  assert.equal(skillReady(party.find((unit) => unit.id === "sol")), false);
   chargeFromAttack(party);
   assert.ok(party.every(skillReady));
   chargeFromAttack(party);
-  assert.ok(party.every(unit => unit.bits === skillBitCost(unit)));
+  assert.ok(party.every((unit) => unit.bits === skillBitCost(unit)));
   assert.equal(skillBitCost(member("sol"), 3), 21);
 });
 test("uncharged and fallen skills cannot be spent; activation spends charge once", () => {
@@ -492,7 +492,12 @@ test("uncharged and fallen skills cannot be spent; activation spends charge once
   assert.equal(resolveLessonTurn(party, 180, 2, "byte"), null);
 });
 test("Patch heals; Bolt and Pip grant targeted shields only on manual activation", () => {
-  const party = [member("patch"), member("bolt"), member("pip"), member("echo")];
+  const party = [
+    member("patch"),
+    member("bolt"),
+    member("pip"),
+    member("echo"),
+  ];
   party[3].hp -= 30;
   assert.equal(useSkill(party, "patch").healed, 8);
   assert.equal(useSkill(party, "bolt").shielded, 8);
@@ -501,7 +506,11 @@ test("Patch heals; Bolt and Pip grant targeted shields only on manual activation
   assert.equal(party[0].shield, 8);
 });
 test("Query Echo and Nova deal their distinct skill damage without earning charge", () => {
-  for (const [id, damage] of [["query", 4], ["echo", 4], ["nova", 6]]) {
+  for (const [id, damage] of [
+    ["query", 4],
+    ["echo", 4],
+    ["nova", 6],
+  ]) {
     const party = [member(id)];
     const turn = useSkill(party, id);
     assert.equal(turn.spell, damage);
@@ -510,11 +519,18 @@ test("Query Echo and Nova deal their distinct skill damage without earning charg
   }
 });
 test("prepared Fern Rune and Atlas guards mitigate one matching enemy attack", () => {
-  for (const [id, type, expected] of [["fern", "single", 6], ["rune", "aoe", 4], ["atlas", "aoe", 8]]) {
+  for (const [id, type, expected] of [
+    ["fern", "single", 6],
+    ["rune", "aoe", 4],
+    ["atlas", "aoe", 8],
+  ]) {
     const party = [member("byte"), member(id)];
     useSkill(party, id);
-    assert.equal(retaliate(party, {type, attack: 32}).hits[0].mitigation, expected);
-    assert.equal(retaliate(party, {type, attack: 32}).hits[0].mitigation, 0);
+    assert.equal(
+      retaliate(party, { type, attack: 32 }).hits[0].mitigation,
+      expected,
+    );
+    assert.equal(retaliate(party, { type, attack: 32 }).hits[0].mitigation, 0);
   }
 });
 test("Zero's execute is conditional and skills cannot finish a lesson fight", () => {
@@ -534,17 +550,25 @@ test("Sol manually revives once per attempt and provides 16 utility", () => {
   assert.equal(useSkill(party, "sol").revived, 0);
 });
 test("all character prompts have language contracts and Java solutions actually execute", () => {
-  for (const unit of characters) for (const stage of [0, 4, 15]) {
-    for (const language of ["sql", "python", "java"]) {
-      const prompt = skillPrompt(unit, language, stage);
-      assert.ok(prompt.objective.includes(unit.name));
-      assert.ok(prompt.solution && prompt.hint && prompt.tests.length);
-      if (language === "java") for (const sample of prompt.tests) {
-        const result = runJava(prompt.solution, {entry: prompt.entry, args: sample.args});
-        assert.deepEqual(prompt.entry ? result.value : result.output, sample.expected);
+  for (const unit of characters)
+    for (const stage of [0, 4, 15]) {
+      for (const language of ["sql", "python", "java"]) {
+        const prompt = skillPrompt(unit, language, stage);
+        assert.ok(prompt.objective.includes(unit.name));
+        assert.ok(prompt.solution && prompt.hint && prompt.tests.length);
+        if (language === "java")
+          for (const sample of prompt.tests) {
+            const result = runJava(prompt.solution, {
+              entry: prompt.entry,
+              args: sample.args,
+            });
+            assert.deepEqual(
+              prompt.entry ? result.value : result.output,
+              sample.expected,
+            );
+          }
       }
     }
-  }
 });
 test("every four-companion roster preserves all normal and boss lesson examples", () => {
   for (let a = 0; a < 9; a++)
@@ -580,7 +604,7 @@ test("fresh battle and retry reset charge and legendary revival allowance", () =
   assert.equal(party[0].revivalUsed, true);
   chargeFromAttack(party);
   const reset = createBattleParty(state, characters);
-  assert.ok(reset.every(unit => unit.bits === 0));
+  assert.ok(reset.every((unit) => unit.bits === 0));
   assert.equal(reset[0].revivalUsed, false);
 });
 test("new games own and field only Byte Knight", () => {

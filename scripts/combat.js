@@ -77,8 +77,15 @@ export function retaliate(party, enemy) {
   return { hits, defeated: party.every((unit) => unit.hp <= 0) };
 }
 
-export function resolveLessonTurn(party, enemyHp, remainingExercises, skillUnitId = null) {
-  const caster = skillUnitId ? party.find(unit => unit.id === skillUnitId) : null;
+export function resolveLessonTurn(
+  party,
+  enemyHp,
+  remainingExercises,
+  skillUnitId = null,
+) {
+  const caster = skillUnitId
+    ? party.find((unit) => unit.id === skillUnitId)
+    : null;
   if (skillUnitId && (!caster || !skillReady(caster))) return null;
   if (caster) caster.bits -= skillBitCost(caster);
   if (!party.some((unit) => unit.hp > 0))
@@ -94,15 +101,25 @@ export function resolveLessonTurn(party, enemyHp, remainingExercises, skillUnitI
     };
   const effects = activateSkills(party, enemyHp, caster ? [caster.id] : []);
   const alive = party.filter((unit) => unit.hp > 0);
-  const auto = caster ? 0 : Math.max(
-    20,
-    Math.min(
-      25,
-      Math.round((20 * alive.reduce((sum, unit) => sum + unit.attack, 0)) / 78),
-    ),
-  );
+  const auto = caster
+    ? 0
+    : Math.max(
+        20,
+        Math.min(
+          25,
+          Math.round(
+            (20 * alive.reduce((sum, unit) => sum + unit.attack, 0)) / 78,
+          ),
+        ),
+      );
   const spell = (caster ? 0 : 40) + Math.min(10, effects.spellBonus);
-  const baseUtility = caster ? (caster.skill.id === 'firewall' ? 12 : caster.skill.id === 'packet-courier' ? 8 : 0) : 40;
+  const baseUtility = caster
+    ? caster.skill.id === "firewall"
+      ? 12
+      : caster.skill.id === "packet-courier"
+        ? 8
+        : 0
+    : 40;
   let utility = baseUtility,
     healed = 0,
     shielded = 0,

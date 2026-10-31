@@ -52,8 +52,7 @@ export const characters = [
     skill: {
       id: "echo-shot",
       name: "Echo Shot",
-      description:
-        "Activate Echo Shot to deal 4 follow-up damage.",
+      description: "Activate Echo Shot to deal 4 follow-up damage.",
     },
   },
   {
@@ -80,8 +79,7 @@ export const characters = [
     skill: {
       id: "static-wall",
       name: "Static Wall",
-      description:
-        "Activate Static Wall to grant Bolt 8 shield points.",
+      description: "Activate Static Wall to grant Bolt 8 shield points.",
     },
   },
   {

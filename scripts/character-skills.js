@@ -1,4 +1,4 @@
-// Skill activation is deterministic and requires a correct cast, never a failed answer.
+// Only explicitly selected characters activate after a charged, validated skill prompt.
 export function activateSkills(party, enemyHp, selectedIds = []) {
   const effects = {
     spellBonus: 0,
@@ -9,7 +9,9 @@ export function activateSkills(party, enemyHp, selectedIds = []) {
     revived: 0,
   };
   // A revived ally can fight now, but does not trigger another skill in the same cast.
-  const casters = party.filter((unit) => unit.hp > 0 && selectedIds.includes(unit.id));
+  const casters = party.filter(
+    (unit) => unit.hp > 0 && selectedIds.includes(unit.id),
+  );
   for (const unit of casters) {
     unit.correctTurns = (unit.correctTurns || 0) + 1;
     const skill = unit.skill;

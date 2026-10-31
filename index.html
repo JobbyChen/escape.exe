@@ -227,16 +227,41 @@
         Pause animation
       </button>
     </footer>
-    <dialog id="skill-dialog" aria-labelledby="skill-title" aria-describedby="skill-objective">
-      <div class="heading"><h2 id="skill-title"></h2><button id="close-skill" class="secondary" aria-label="Close skill prompt">Close</button></div>
+    <dialog
+      id="skill-dialog"
+      aria-labelledby="skill-title"
+      aria-describedby="skill-objective"
+    >
+      <div class="heading">
+        <h2 id="skill-title"></h2>
+        <button
+          id="close-skill"
+          class="secondary"
+          aria-label="Close skill prompt"
+        >
+          Close
+        </button>
+      </div>
       <p id="skill-objective"></p>
       <pre id="skill-example"></pre>
       <p id="skill-cost" class="muted"></p>
       <label for="skill-code">YOUR SKILL CODE</label>
-      <textarea id="skill-code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+      <textarea
+        id="skill-code"
+        spellcheck="false"
+        autocapitalize="off"
+        autocomplete="off"
+        autocorrect="off"
+      ></textarea>
       <p id="skill-runtime" class="muted"></p>
-      <div class="actions"><button id="skill-hint" class="secondary">Hint</button><button id="skill-run" class="secondary">Run code</button><button id="skill-use">Use skill</button></div>
-      <pre id="skill-feedback" role="status" aria-live="polite">Solve the prompt to activate this skill.</pre>
+      <div class="actions">
+        <button id="skill-hint" class="secondary">Hint</button
+        ><button id="skill-run" class="secondary">Run code</button
+        ><button id="skill-use">Use skill</button>
+      </div>
+      <pre id="skill-feedback" role="status" aria-live="polite">
+Solve the prompt to activate this skill.</pre
+      >
     </dialog>
     <script type="module" src="scripts/game.js"></script>
   </body>
